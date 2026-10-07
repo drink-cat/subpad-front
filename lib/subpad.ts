@@ -30,10 +30,21 @@ export function swapLabel(swapType: string) {
   return swapTypes.find((item) => item.value === swapType)?.label ?? swapType;
 }
 
-export function listSubpads(userId: number) {
-  return request<Subpad[] | null>(`/api/subpad_info/list?user_id=${userId}&limit=200`).then(
-    (rows) => rows ?? [],
-  );
+export type SubpadQuery = {
+  user_id?: number;
+  brand?: string;
+  status?: number;
+  swap_type?: string;
+};
+
+export function listSubpads(query: SubpadQuery = {}) {
+  const params = new URLSearchParams();
+  if (query.user_id !== undefined) params.set("user_id", String(query.user_id));
+  if (query.brand) params.set("brand", query.brand);
+  if (query.status !== undefined) params.set("status", String(query.status));
+  if (query.swap_type) params.set("swap_type", query.swap_type);
+  params.set("limit", "200");
+  return request<Subpad[] | null>(`/api/subpad_info/list?${params.toString()}`).then((rows) => rows ?? []);
 }
 
 export function createSubpad(input: Omit<Subpad, "id">) {

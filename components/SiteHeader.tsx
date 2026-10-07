@@ -18,6 +18,9 @@ export function SiteHeader() {
         <a className="site-tab" href="/subpad" aria-current={path === "/subpad" ? "page" : undefined}>
           subpad管理
         </a>
+        <a className="site-tab" href="/fee" aria-current={path === "/fee" ? "page" : undefined}>
+          fee管理
+        </a>
       </nav>
       <div className="header-end">
         {user ? (

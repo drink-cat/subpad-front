@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, expect, test, vi } from "vitest";
 import { AuthProvider } from "./AuthProvider";
 import { SubpadPanel } from "./SubpadPanel";
@@ -32,7 +32,10 @@ test("未登录时提示先登录", () => {
     </AuthProvider>,
   );
   expect(screen.getByText("请先登录后再管理 subpad。")).toBeInTheDocument();
+  expect(screen.getByTestId("default-pad")).toHaveTextContent("默认 pad");
+  expect(screen.getByTestId("default-pad")).not.toHaveTextContent("padId");
   expect(screen.getByRole("button", { name: "新建 subpad" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "查询" })).toBeDisabled();
   expect(api.listSubpads).not.toHaveBeenCalled();
 });
 
@@ -66,15 +69,22 @@ test("展示当前用户的 subpad，并可以新建", async () => {
   );
 
   expect(await screen.findByText("Foods Pad")).toBeInTheDocument();
-  expect(screen.getByText("模拟")).toBeInTheDocument();
-  expect(api.listSubpads).toHaveBeenCalledWith(3);
+  expect(screen.getByText("padId 1")).toBeInTheDocument();
+  expect(screen.getByTestId("default-pad")).not.toHaveTextContent("padId");
+  expect(api.listSubpads).toHaveBeenCalledWith({});
+
+  fireEvent.click(screen.getByRole("checkbox", { name: "看我的subpad" }));
+  fireEvent.change(screen.getAllByLabelText("品牌")[0], { target: { value: "foods" } });
+  fireEvent.click(screen.getByRole("button", { name: "查询" }));
+  expect(api.listSubpads).toHaveBeenCalledWith({ user_id: 3, brand: "foods" });
 
   fireEvent.click(screen.getByRole("button", { name: "新建 subpad" }));
-  fireEvent.change(screen.getByLabelText("品牌"), { target: { value: "drinks" } });
-  fireEvent.change(screen.getByLabelText("全称"), { target: { value: "Drinks Pad" } });
-  fireEvent.change(screen.getByLabelText("描述"), { target: { value: "饮料" } });
-  fireEvent.change(screen.getByLabelText("Swap 类型"), { target: { value: "uniSwap" } });
-  fireEvent.click(screen.getByRole("button", { name: "提交" }));
+  const dialog = screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText("品牌"), { target: { value: "drinks" } });
+  fireEvent.change(within(dialog).getByLabelText("全称"), { target: { value: "Drinks Pad" } });
+  fireEvent.change(within(dialog).getByLabelText("描述"), { target: { value: "饮料" } });
+  fireEvent.change(within(dialog).getByLabelText("Swap 类型"), { target: { value: "uniSwap" } });
+  fireEvent.click(within(dialog).getByRole("button", { name: "提交" }));
 
   expect(await screen.findByText("Drinks Pad")).toBeInTheDocument();
   expect(api.createSubpad).toHaveBeenCalledWith({
