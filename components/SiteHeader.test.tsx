@@ -179,3 +179,16 @@ test("测试网连接成功后可以断开", async () => {
 
   expect(await screen.findByTestId("connect-wallet")).toHaveTextContent("连接钱包");
 });
+
+test("已登录时用户名在钱包左侧", () => {
+  render(
+    <Providers initialUser={{ id: 7, username: "alice", fee_addr: "", token: "token" }}>
+      <SiteHeader />
+    </Providers>,
+  );
+
+  const name = screen.getByTestId("header-username");
+  const wallet = screen.getByTestId("connect-wallet");
+  expect(name).toHaveTextContent("alice");
+  expect(name.compareDocumentPosition(wallet) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
