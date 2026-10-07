@@ -24,18 +24,25 @@ const emptyForm = {
   description: "",
 };
 
+function createTokenHref(brand?: string) {
+  if (!brand) return "/subpad/createToken";
+  return `http://${brand}.launch.o1.local/subpad/createToken`;
+}
+
 function PadActions({
+  brand,
   id,
   locked,
   onEdit,
   onDelete,
 }: {
+  brand?: string;
   id?: number;
   locked: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
 }) {
-  const createTokenHref = "/subpad/createToken";
+  const href = createTokenHref(brand);
   return (
     <div className="row-actions">
       {locked ? (
@@ -43,7 +50,7 @@ function PadActions({
           发币
         </button>
       ) : (
-        <a className="primary-button" href={createTokenHref} target="_blank" rel="noopener noreferrer">
+        <a className="primary-button" href={href} target="_blank" rel="noopener noreferrer">
           发币
         </a>
       )}
@@ -298,6 +305,7 @@ export function SubpadPanel() {
                   <td>{statusLabel(item.status)}</td>
                   <td>
                     <PadActions
+                      brand={item.brand}
                       id={item.id}
                       locked={!user}
                       onEdit={() => openEdit(item)}

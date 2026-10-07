@@ -91,7 +91,7 @@ test("展示当前用户的 subpad，并可以新建", async () => {
   const row = screen.getByRole("row", { name: /Foods Pad/ });
   expect(within(row).getAllByRole("cell")[0]).toHaveTextContent("foods");
   const issue = within(row).getByRole("link", { name: "发币" });
-  expect(issue).toHaveAttribute("href", "/subpad/createToken");
+  expect(issue).toHaveAttribute("href", "http://foods.launch.o1.local/subpad/createToken");
   expect(issue).toHaveAttribute("target", "_blank");
   expect(issue).toHaveClass("primary-button");
   expect(within(row).getByRole("button", { name: "修改" })).toBeEnabled();

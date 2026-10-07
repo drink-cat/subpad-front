@@ -6,9 +6,8 @@ import { useConnection, usePublicClient, useWriteContract } from "wagmi";
 import { useAuth } from "@/components/AuthProvider";
 import { TxLog } from "@/components/TxLog";
 import { ApiError } from "@/lib/api";
-import { brandFromHost } from "@/lib/brand";
 import { getPublicConfig, type PublicConfig } from "@/lib/config";
-import { getSubpad, listSubpads, statusLabel, swapLabel, type Subpad } from "@/lib/subpad";
+import { hostSubpad, statusLabel, swapLabel, type Subpad } from "@/lib/subpad";
 import {
   claimUnits,
   isLocalUsdc,
@@ -63,19 +62,23 @@ function asAddress(value: string, message: string): Address {
   return addr;
 }
 
-function SubpadSummary({ pad, showId }: { pad: Subpad; showId: boolean }) {
+function SubpadSummary({ pad }: { pad: Subpad }) {
+  if (pad.id === 0) {
+    return (
+      <dl>
+        <dt>品牌</dt>
+        <dd>默认 pad</dd>
+      </dl>
+    );
+  }
   return (
     <dl>
       <dt>品牌</dt>
       <dd>{pad.brand}</dd>
       <dt>全称</dt>
       <dd>{pad.nameFull}</dd>
-      {showId ? (
-        <>
-          <dt>padId</dt>
-          <dd>{pad.id}</dd>
-        </>
-      ) : null}
+      <dt>padId</dt>
+      <dd>{pad.id}</dd>
       <dt>状态</dt>
       <dd>{statusLabel(pad.status)}</dd>
       <dt>Swap</dt>
@@ -134,19 +137,11 @@ export function SwapPanel({ tokenId }: { tokenId?: string }) {
   useEffect(() => {
     if (!user || id === "invalid") return;
     let cancelled = false;
-    Promise.all([getToken(id), getPublicConfig()])
-      .then(async ([nextToken, nextConfig]) => {
+    Promise.all([getToken(id), getPublicConfig(), hostSubpad()])
+      .then(([nextToken, nextConfig, nextPad]) => {
         if (cancelled) return;
         setToken(nextToken);
         setConfig(nextConfig);
-        const brand = nextToken.subpadId == null ? brandFromHost(window.location.host) : null;
-        const nextPad =
-          nextToken.subpadId != null
-            ? await getSubpad(nextToken.subpadId)
-            : brand
-              ? ((await listSubpads({ brand }))[0] ?? null)
-              : null;
-        if (cancelled) return;
         setPad(nextPad);
         setInfoLoaded(true);
       })
@@ -258,8 +253,7 @@ export function SwapPanel({ tokenId }: { tokenId?: string }) {
         <h2>subpad 信息</h2>
         {!user ? <p className="page-hint">请先登录后再交易。</p> : null}
         {user && infoError ? <p className="form-error">{infoError}</p> : null}
-        {user && infoLoaded && !infoError && !pad ? <p className="page-hint">没有找到 subpad。</p> : null}
-        {pad ? <SubpadSummary pad={pad} showId={token?.subpadId != null} /> : null}
+        {pad ? <SubpadSummary pad={pad} /> : null}
       </section>
       <section className="subpad-summary" data-testid="token-info">
         <h2>token 信息</h2>

@@ -47,7 +47,6 @@ export function IssuePanel() {
   const { writeContractAsync } = useWriteContract();
   const [pad, setPad] = useState<Subpad | null>(null);
   const [infoError, setInfoError] = useState("");
-  const [infoLoaded, setInfoLoaded] = useState(false);
   const [tokenName, setTokenName] = useState("");
   const [tokenSymbol, setTokenSymbol] = useState("");
   const [config, setConfig] = useState<PublicConfig | null>(null);
@@ -71,7 +70,6 @@ export function IssuePanel() {
         const next = selectedQuoteToken(nextConfig);
         setQuote(`${next.name} ${next.addr}`);
         setPad(nextPad);
-        setInfoLoaded(true);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -79,7 +77,6 @@ export function IssuePanel() {
         const message = err instanceof Error ? err.message : "请求失败";
         setError(message);
         setInfoError(message);
-        setInfoLoaded(true);
       });
     return () => {
       cancelled = true;

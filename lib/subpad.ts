@@ -64,11 +64,19 @@ export function defaultSubpad(): Subpad {
   };
 }
 
+/** fetch 按 Latin-1 读取响应头，后端写入的是 UTF-8 JSON。 */
+function subpadHeaderText(raw: string) {
+  if ([...raw].some((char) => char.charCodeAt(0) > 255)) return raw;
+  const bytes = Uint8Array.from(raw, (char) => char.charCodeAt(0));
+  const decoded = new TextDecoder().decode(bytes);
+  return decoded.includes("\uFFFD") ? raw : decoded;
+}
+
 export function parseSubpadHeader(raw: string | null) {
   if (!raw) return null;
   let row: Subpad;
   try {
-    row = JSON.parse(raw) as Subpad;
+    row = JSON.parse(subpadHeaderText(raw)) as Subpad;
   } catch {
     throw new Error("subpad 信息无效");
   }

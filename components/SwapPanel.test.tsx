@@ -6,8 +6,7 @@ import { SwapPanel } from "./SwapPanel";
 
 const api = vi.hoisted(() => ({
   getToken: vi.fn(),
-  getSubpad: vi.fn(),
-  listSubpads: vi.fn(),
+  hostSubpad: vi.fn(),
   getPublicConfig: vi.fn(),
   write: vi.fn(),
   read: vi.fn(),
@@ -22,7 +21,7 @@ vi.mock("@/lib/token", async () => {
 
 vi.mock("@/lib/subpad", async () => {
   const actual = await vi.importActual<typeof import("@/lib/subpad")>("@/lib/subpad");
-  return { ...actual, getSubpad: api.getSubpad, listSubpads: api.listSubpads };
+  return { ...actual, hostSubpad: api.hostSubpad };
 });
 
 vi.mock("@/lib/config", () => ({
@@ -77,15 +76,13 @@ function config(local = quote) {
 beforeEach(() => {
   api.address = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
   api.getToken.mockReset();
-  api.getSubpad.mockReset();
-  api.listSubpads.mockReset();
+  api.hostSubpad.mockReset();
   api.getPublicConfig.mockReset();
   api.write.mockReset();
   api.read.mockReset();
   api.wait.mockReset();
   api.getToken.mockResolvedValue(token);
-  api.getSubpad.mockResolvedValue(pad);
-  api.listSubpads.mockResolvedValue([pad]);
+  api.hostSubpad.mockResolvedValue(pad);
   api.getPublicConfig.mockResolvedValue(config());
   api.write.mockResolvedValue("0xhash");
   api.wait.mockResolvedValue({});
