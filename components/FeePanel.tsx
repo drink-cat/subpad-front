@@ -6,22 +6,22 @@ import { ApiError } from "@/lib/api";
 import { feeTypeLabel, feeTypes, formatFeeAmount, listFees, type Fee, type FeeQuery } from "@/lib/fee";
 
 const emptyForm = {
-  chainid: "",
-  pool_id: "",
-  tx_hash: "",
-  fee_type: "",
-  fee_to: "",
+  chainId: "",
+  poolId: "",
+  txHash: "",
+  feeType: "",
+  feeTo: "",
 };
 
 function toQuery(form: typeof emptyForm): FeeQuery | string {
-  const chainid = form.chainid.trim();
-  if (chainid && !/^\d+$/.test(chainid)) return "网络请填写数字";
+  const chainId = form.chainId.trim();
+  if (chainId && !/^\d+$/.test(chainId)) return "网络请填写数字";
   const query: FeeQuery = {};
-  if (chainid) query.chainid = Number(chainid);
-  if (form.pool_id.trim()) query.pool_id = form.pool_id.trim();
-  if (form.tx_hash.trim()) query.tx_hash = form.tx_hash.trim();
-  if (form.fee_type) query.fee_type = form.fee_type;
-  if (form.fee_to.trim()) query.fee_to = form.fee_to.trim();
+  if (chainId) query.chainId = Number(chainId);
+  if (form.poolId.trim()) query.poolId = form.poolId.trim();
+  if (form.txHash.trim()) query.txHash = form.txHash.trim();
+  if (form.feeType) query.feeType = form.feeType;
+  if (form.feeTo.trim()) query.feeTo = form.feeTo.trim();
   return query;
 }
 
@@ -82,19 +82,19 @@ export function FeePanel() {
       <form className="filter-bar" onSubmit={onSubmit}>
         <label className="field">
           网络
-          <input value={form.chainid} onChange={(event) => setForm({ ...form, chainid: event.target.value })} />
+          <input value={form.chainId} onChange={(event) => setForm({ ...form, chainId: event.target.value })} />
         </label>
         <label className="field">
           Pool
-          <input value={form.pool_id} onChange={(event) => setForm({ ...form, pool_id: event.target.value })} />
+          <input value={form.poolId} onChange={(event) => setForm({ ...form, poolId: event.target.value })} />
         </label>
         <label className="field">
           交易哈希
-          <input value={form.tx_hash} onChange={(event) => setForm({ ...form, tx_hash: event.target.value })} />
+          <input value={form.txHash} onChange={(event) => setForm({ ...form, txHash: event.target.value })} />
         </label>
         <label className="field">
           类型
-          <select value={form.fee_type} onChange={(event) => setForm({ ...form, fee_type: event.target.value })}>
+          <select value={form.feeType} onChange={(event) => setForm({ ...form, feeType: event.target.value })}>
             <option value="">全部</option>
             {feeTypes.map((item) => (
               <option key={item.value} value={item.value}>
@@ -105,7 +105,7 @@ export function FeePanel() {
         </label>
         <label className="field">
           收款地址
-          <input value={form.fee_to} onChange={(event) => setForm({ ...form, fee_to: event.target.value })} />
+          <input value={form.feeTo} onChange={(event) => setForm({ ...form, feeTo: event.target.value })} />
         </label>
         <button className="primary-button" type="submit" disabled={!user || pending}>
           查询
@@ -131,16 +131,16 @@ export function FeePanel() {
             <tbody>
               {rows.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.chainid}</td>
-                  <td>{item.pool_id}</td>
-                  <td className="mono">{item.tx_hash}</td>
-                  <td>{feeTypeLabel(item.fee_type)}</td>
+                  <td>{item.chainId}</td>
+                  <td>{item.poolId}</td>
+                  <td className="mono">{item.txHash}</td>
+                  <td>{feeTypeLabel(item.feeType)}</td>
                   <td className="mono">
-                    {formatFeeAmount(item.fee_amount, item.fee_decimal)}
-                    <span className="fee-token">{item.fee_token}</span>
+                    {formatFeeAmount(item.feeAmount, item.feeDecimal)}
+                    <span className="fee-token">{item.feeToken}</span>
                   </td>
-                  <td className="mono">{item.fee_to}</td>
-                  <td>{item.created_at.replace("T", " ").replace(/\+\d{2}:\d{2}$/, "")}</td>
+                  <td className="mono">{item.feeTo}</td>
+                  <td>{item.createdAt.replace("T", " ").replace(/\+\d{2}:\d{2}$/, "")}</td>
                 </tr>
               ))}
             </tbody>

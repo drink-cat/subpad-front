@@ -33,15 +33,20 @@ export function AccountPanel() {
         const next = await updateUser(user.id, {
           username: name,
           password,
-          fee_addr: feeAddr.trim(),
+          feeAddr: feeAddr.trim(),
         });
-        signIn({ ...user, ...next, username: next.username || name, fee_addr: next.fee_addr ?? feeAddr.trim() });
+        signIn({
+          id: user.id,
+          username: next.username || name,
+          fee_addr: next.feeAddr ?? feeAddr.trim(),
+          token: user.token,
+        });
         setPassword("");
         return;
       }
       const next =
         mode === "register"
-          ? await registerUser({ username: name, password, fee_addr: feeAddr.trim() })
+          ? await registerUser({ username: name, password, feeAddr: feeAddr.trim() })
           : await loginUser(name, password);
       signIn({
         id: next.id,

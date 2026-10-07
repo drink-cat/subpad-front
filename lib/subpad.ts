@@ -2,12 +2,23 @@ import { request } from "@/lib/api";
 
 export type Subpad = {
   id: number;
-  user_id: number;
-  user_addr: string;
+  userId: number;
+  feeAddr: string;
   brand: string;
-  name_full: string;
+  nameFull: string;
   status: number;
-  swap_type: string;
+  swapType: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SubpadInput = {
+  userId: number;
+  brand: string;
+  nameFull: string;
+  status: number;
+  swapType: string;
   description: string;
 };
 
@@ -31,23 +42,23 @@ export function swapLabel(swapType: string) {
 }
 
 export type SubpadQuery = {
-  user_id?: number;
+  userId?: number;
   brand?: string;
   status?: number;
-  swap_type?: string;
+  swapType?: string;
 };
 
 export function listSubpads(query: SubpadQuery = {}) {
   const params = new URLSearchParams();
-  if (query.user_id !== undefined) params.set("user_id", String(query.user_id));
+  if (query.userId !== undefined) params.set("userId", String(query.userId));
   if (query.brand) params.set("brand", query.brand);
   if (query.status !== undefined) params.set("status", String(query.status));
-  if (query.swap_type) params.set("swap_type", query.swap_type);
+  if (query.swapType) params.set("swapType", query.swapType);
   params.set("limit", "200");
   return request<Subpad[] | null>(`/api/subpad_info/list?${params.toString()}`).then((rows) => rows ?? []);
 }
 
-export function createSubpad(input: Omit<Subpad, "id">) {
+export function createSubpad(input: SubpadInput) {
   return request<Subpad>("/api/subpad_info/create", {
     method: "POST",
     body: JSON.stringify(input),

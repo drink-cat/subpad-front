@@ -28,7 +28,7 @@ function renderPanel() {
 
 test("登录成功后可以修改用户名", async () => {
   api.loginUser.mockResolvedValue({ id: 3, username: "alice", fee_addr: "", token: "token" });
-  api.updateUser.mockResolvedValue({ id: 3, username: "amy", fee_addr: "0xabc" });
+  api.updateUser.mockResolvedValue({ id: 3, username: "amy", feeAddr: "0xabc" });
   renderPanel();
 
   fireEvent.change(screen.getByLabelText("用户名"), { target: { value: "alice" } });
@@ -43,7 +43,7 @@ test("登录成功后可以修改用户名", async () => {
   fireEvent.click(screen.getByRole("button", { name: "保存" }));
 
   expect(await screen.findByDisplayValue("amy")).toBeInTheDocument();
-  expect(api.updateUser).toHaveBeenCalledWith(3, { username: "amy", password: "", fee_addr: "0xabc" });
+  expect(api.updateUser).toHaveBeenCalledWith(3, { username: "amy", password: "", feeAddr: "0xabc" });
 });
 
 test("用户不存在时显示错误", async () => {
@@ -71,6 +71,6 @@ test("注册成功后进入修改信息", async () => {
   expect(api.registerUser).toHaveBeenCalledWith({
     username: "bob",
     password: "secret",
-    fee_addr: "0xfee",
+    feeAddr: "0xfee",
   });
 });

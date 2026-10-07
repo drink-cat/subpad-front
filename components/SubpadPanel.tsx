@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useConnection } from "wagmi";
 import { useAuth } from "@/components/AuthProvider";
 import { ApiError } from "@/lib/api";
 import {
@@ -17,23 +16,31 @@ import {
 
 const emptyForm = {
   brand: "",
-  name_full: "",
-  user_addr: "",
+  nameFull: "",
   status: "1",
-  swap_type: "mockSwap",
+  swapType: "mockSwap",
   description: "",
 };
+
+function PadActions({ id }: { id?: number }) {
+  return (
+    <div className="row-actions">
+      <a href={id === undefined ? "/subpad/issue" : `/subpad/issue/${id}`}>发币</a>
+      <button type="button">交易</button>
+      <button type="button">费用</button>
+    </div>
+  );
+}
 
 const emptyFilter = {
   brand: "",
   status: "",
-  swap_type: "",
+  swapType: "",
   mine: false,
 };
 
 export function SubpadPanel() {
   const { user, signOut } = useAuth();
-  const { address } = useConnection();
   const [rows, setRows] = useState<Subpad[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
@@ -73,8 +80,8 @@ export function SubpadPanel() {
     const query: SubpadQuery = {};
     if (filter.brand.trim()) query.brand = filter.brand.trim();
     if (filter.status) query.status = Number(filter.status);
-    if (filter.swap_type) query.swap_type = filter.swap_type;
-    if (filter.mine && user) query.user_id = user.id;
+    if (filter.swapType) query.swapType = filter.swapType;
+    if (filter.mine && user) query.userId = user.id;
     return query;
   }
 
@@ -94,7 +101,7 @@ export function SubpadPanel() {
   }
 
   function openCreate() {
-    setForm({ ...emptyForm, user_addr: address ?? "" });
+    setForm(emptyForm);
     setFormError("");
     setOpen(true);
   }
@@ -103,7 +110,7 @@ export function SubpadPanel() {
     event.preventDefault();
     if (!user) return;
     const brand = form.brand.trim();
-    const name = form.name_full.trim();
+    const name = form.nameFull.trim();
     if (!/^[A-Za-z0-9-]+$/.test(brand)) {
       setFormError("品牌请使用英文、数字或连字符");
       return;
@@ -116,12 +123,11 @@ export function SubpadPanel() {
     setFormError("");
     try {
       const created = await createSubpad({
-        user_id: user.id,
-        user_addr: form.user_addr.trim(),
+        userId: user.id,
         brand,
-        name_full: name,
+        nameFull: name,
         status: Number(form.status),
-        swap_type: form.swap_type,
+        swapType: form.swapType,
         description: form.description.trim(),
       });
       setRows((current) => [created, ...current.filter((item) => item.id !== created.id)]);
@@ -135,7 +141,7 @@ export function SubpadPanel() {
   }
 
   return (
-    <main className="page">
+    <main className="page page-wide">
       <div className="page-bar">
         <h1>subpad管理</h1>
         <button className="primary-button" type="button" onClick={openCreate} disabled={!user}>
@@ -144,6 +150,7 @@ export function SubpadPanel() {
       </div>
       <section className="default-pad" data-testid="default-pad">
         <strong>默认 pad</strong>
+        <PadActions />
       </section>
       <form className="filter-bar" onSubmit={onSearch}>
         <label className="field">
@@ -164,8 +171,8 @@ export function SubpadPanel() {
         <label className="field">
           Swap 类型
           <select
-            value={filter.swap_type}
-            onChange={(event) => setFilter({ ...filter, swap_type: event.target.value })}
+            value={filter.swapType}
+            onChange={(event) => setFilter({ ...filter, swapType: event.target.value })}
           >
             <option value="">全部</option>
             {swapTypes.map((item) => (
@@ -191,17 +198,34 @@ export function SubpadPanel() {
       {user && error ? <p className="form-error">{error}</p> : null}
       {user && loaded && !error && rows.length === 0 ? <p className="page-hint">没有符合条件的 subpad。</p> : null}
       {rows.length > 0 ? (
-        <ul className="subpad-list">
-          {rows.map((item) => (
-            <li key={item.id} className="subpad-card">
-              <strong>{item.name_full}</strong>
-              <span>{item.brand}</span>
-              <span>padId {item.id}</span>
-              <span>{swapLabel(item.swap_type)}</span>
-              <span>{statusLabel(item.status)}</span>
-            </li>
-          ))}
-        </ul>
+        <div className="table-wrap">
+          <table className="subpad-table">
+            <thead>
+              <tr>
+                <th>品牌</th>
+                <th>全称</th>
+                <th>padId</th>
+                <th>Swap</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.brand}</td>
+                  <td>{item.nameFull}</td>
+                  <td>{item.id}</td>
+                  <td>{swapLabel(item.swapType)}</td>
+                  <td>{statusLabel(item.status)}</td>
+                  <td>
+                    <PadActions id={item.id} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
       {open ? (
         <div className="modal-backdrop" onClick={() => setOpen(false)}>
@@ -224,22 +248,15 @@ export function SubpadPanel() {
               <label className="field">
                 全称
                 <input
-                  value={form.name_full}
-                  onChange={(event) => setForm({ ...form, name_full: event.target.value })}
-                />
-              </label>
-              <label className="field">
-                钱包地址
-                <input
-                  value={form.user_addr}
-                  onChange={(event) => setForm({ ...form, user_addr: event.target.value })}
+                  value={form.nameFull}
+                  onChange={(event) => setForm({ ...form, nameFull: event.target.value })}
                 />
               </label>
               <label className="field">
                 Swap 类型
                 <select
-                  value={form.swap_type}
-                  onChange={(event) => setForm({ ...form, swap_type: event.target.value })}
+                  value={form.swapType}
+                  onChange={(event) => setForm({ ...form, swapType: event.target.value })}
                 >
                   {swapTypes.map((item) => (
                     <option key={item.value} value={item.value}>

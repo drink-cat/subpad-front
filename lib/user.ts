@@ -4,7 +4,7 @@ import { readJwt, type SessionUser } from "@/lib/session";
 type UserProfile = {
   id: number;
   username: string;
-  fee_addr: string;
+  feeAddr: string;
 };
 
 async function loadProfile(token: string, username: string): Promise<SessionUser> {
@@ -16,7 +16,7 @@ async function loadProfile(token: string, username: string): Promise<SessionUser
     return {
       id: profile.id,
       username: profile.username || claims.username || username,
-      fee_addr: profile.fee_addr ?? "",
+      fee_addr: profile.feeAddr ?? "",
       token,
     };
   } catch {
@@ -33,7 +33,7 @@ export async function loginUser(username: string, password: string): Promise<Ses
   return loadProfile(data.jwtToken, username);
 }
 
-export async function registerUser(input: { username: string; password: string; fee_addr: string }) {
+export async function registerUser(input: { username: string; password: string; feeAddr: string }) {
   await request(
     "/api/user_info/create",
     { method: "POST", body: JSON.stringify(input) },
@@ -44,7 +44,7 @@ export async function registerUser(input: { username: string; password: string; 
 
 export async function updateUser(
   id: number,
-  input: { username: string; password: string; fee_addr: string },
+  input: { username: string; password: string; feeAddr: string },
 ) {
   return request<UserProfile>("/api/user_info/update", {
     method: "POST",

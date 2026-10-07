@@ -8,10 +8,6 @@ const api = vi.hoisted(() => ({
   createSubpad: vi.fn(),
 }));
 
-vi.mock("wagmi", () => ({
-  useConnection: () => ({ address: "0xwallet" }),
-}));
-
 vi.mock("@/lib/subpad", async () => {
   const actual = await vi.importActual<typeof import("@/lib/subpad")>("@/lib/subpad");
   return { ...actual, listSubpads: api.listSubpads, createSubpad: api.createSubpad };
@@ -43,24 +39,28 @@ test("展示当前用户的 subpad，并可以新建", async () => {
   api.listSubpads.mockResolvedValue([
     {
       id: 1,
-      user_id: 3,
-      user_addr: "0xwallet",
+      userId: 3,
+      feeAddr: "0xfee",
       brand: "foods",
-      name_full: "Foods Pad",
+      nameFull: "Foods Pad",
       status: 1,
-      swap_type: "mockSwap",
+      swapType: "mockSwap",
       description: "",
+      createdAt: "",
+      updatedAt: "",
     },
   ]);
   api.createSubpad.mockResolvedValue({
     id: 2,
-    user_id: 3,
-    user_addr: "0xwallet",
+    userId: 3,
+    feeAddr: "0xfee",
     brand: "drinks",
-    name_full: "Drinks Pad",
+    nameFull: "Drinks Pad",
     status: 1,
-    swap_type: "uniSwap",
+    swapType: "uniSwap",
     description: "饮料",
+    createdAt: "",
+    updatedAt: "",
   });
   render(
     <AuthProvider initialUser={user}>
@@ -69,14 +69,25 @@ test("展示当前用户的 subpad，并可以新建", async () => {
   );
 
   expect(await screen.findByText("Foods Pad")).toBeInTheDocument();
-  expect(screen.getByText("padId 1")).toBeInTheDocument();
+  const headers = screen.getAllByRole("columnheader").map((item) => item.textContent);
+  expect(headers[0]).toBe("品牌");
+  expect(headers.at(-1)).toBe("操作");
+  const row = screen.getByRole("row", { name: /Foods Pad/ });
+  expect(within(row).getAllByRole("cell")[0]).toHaveTextContent("foods");
+  expect(within(row).getByRole("link", { name: "发币" })).toHaveAttribute("href", "/subpad/issue/1");
+  expect(within(row).getByRole("button", { name: "交易" })).toBeInTheDocument();
+  expect(within(row).getByRole("button", { name: "费用" })).toBeInTheDocument();
   expect(screen.getByTestId("default-pad")).not.toHaveTextContent("padId");
+  expect(within(screen.getByTestId("default-pad")).getByRole("link", { name: "发币" })).toHaveAttribute(
+    "href",
+    "/subpad/issue",
+  );
   expect(api.listSubpads).toHaveBeenCalledWith({});
 
   fireEvent.click(screen.getByRole("checkbox", { name: "看我的subpad" }));
   fireEvent.change(screen.getAllByLabelText("品牌")[0], { target: { value: "foods" } });
   fireEvent.click(screen.getByRole("button", { name: "查询" }));
-  expect(api.listSubpads).toHaveBeenCalledWith({ user_id: 3, brand: "foods" });
+  expect(api.listSubpads).toHaveBeenCalledWith({ userId: 3, brand: "foods" });
 
   fireEvent.click(screen.getByRole("button", { name: "新建 subpad" }));
   const dialog = screen.getByRole("dialog");
@@ -88,12 +99,11 @@ test("展示当前用户的 subpad，并可以新建", async () => {
 
   expect(await screen.findByText("Drinks Pad")).toBeInTheDocument();
   expect(api.createSubpad).toHaveBeenCalledWith({
-    user_id: 3,
-    user_addr: "0xwallet",
+    userId: 3,
     brand: "drinks",
-    name_full: "Drinks Pad",
+    nameFull: "Drinks Pad",
     status: 1,
-    swap_type: "uniSwap",
+    swapType: "uniSwap",
     description: "饮料",
   });
 });

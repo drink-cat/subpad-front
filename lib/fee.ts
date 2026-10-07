@@ -2,23 +2,24 @@ import { request } from "@/lib/api";
 
 export type Fee = {
   id: number;
-  chainid: number;
-  pool_id: string;
-  tx_hash: string;
-  fee_type: string;
-  fee_token: string;
-  fee_decimal: number;
-  fee_amount: number;
-  fee_to: string;
-  created_at: string;
+  chainId: number;
+  poolId: string;
+  txHash: string;
+  feeType: string;
+  feeToken: string;
+  feeDecimal: number;
+  feeAmount: number;
+  feeTo: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type FeeQuery = {
-  chainid?: number;
-  pool_id?: string;
-  tx_hash?: string;
-  fee_type?: string;
-  fee_to?: string;
+  chainId?: number;
+  poolId?: string;
+  txHash?: string;
+  feeType?: string;
+  feeTo?: string;
 };
 
 export const feeTypes = [
@@ -45,11 +46,11 @@ export function formatFeeAmount(amount: number, decimals: number) {
 
 export function listFees(query: FeeQuery) {
   const params = new URLSearchParams();
-  if (query.chainid !== undefined) params.set("chainid", String(query.chainid));
-  if (query.pool_id) params.set("pool_id", query.pool_id);
-  if (query.tx_hash) params.set("tx_hash", query.tx_hash);
-  if (query.fee_type) params.set("fee_type", query.fee_type);
-  if (query.fee_to) params.set("fee_to", query.fee_to);
+  if (query.chainId !== undefined) params.set("chainId", String(query.chainId));
+  if (query.poolId) params.set("poolId", query.poolId);
+  if (query.txHash) params.set("txHash", query.txHash);
+  if (query.feeType) params.set("feeType", query.feeType);
+  if (query.feeTo) params.set("feeTo", query.feeTo);
   params.set("limit", "200");
   return request<Fee[] | null>(`/api/fee_info/list?${params.toString()}`).then((rows) => rows ?? []);
 }

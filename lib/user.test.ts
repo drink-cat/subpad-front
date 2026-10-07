@@ -24,7 +24,7 @@ test("登录会校验密码并带上令牌读取资料", async () => {
     }
     expect(String(url)).toContain("/api/user_info/get?id=3");
     expect(new Headers(init?.headers).get("Authorization")).toBe(`Bearer ${token}`);
-    return json({ code: 0, message: "ok", data: { id: 3, username: "alice", fee_addr: "0xfee" } });
+    return json({ code: 0, message: "ok", data: { id: 3, username: "alice", feeAddr: "0xfee" } });
   });
   vi.stubGlobal("fetch", fetchMock);
 
@@ -49,19 +49,24 @@ test("密码错误时显示中文", async () => {
 
 test("注册后继续登录", async () => {
   const token = jwt({ userId: 4, username: "bob" });
-  const fetchMock = vi.fn(async (url: string) => {
+  const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     if (String(url).endsWith("/api/user_info/create")) {
-      return json({ code: 0, message: "ok", data: { id: 4, username: "bob", fee_addr: "0xfee" } });
+      expect(JSON.parse(String(init?.body))).toEqual({
+        username: "bob",
+        password: "secret",
+        feeAddr: "0xfee",
+      });
+      return json({ code: 0, message: "ok", data: { id: 4, username: "bob", feeAddr: "0xfee" } });
     }
     if (String(url).endsWith("/api/user_info/login")) {
       return json({ code: 0, message: "ok", data: { jwtToken: token } });
     }
-    return json({ code: 0, message: "ok", data: { id: 4, username: "bob", fee_addr: "0xfee" } });
+    return json({ code: 0, message: "ok", data: { id: 4, username: "bob", feeAddr: "0xfee" } });
   });
   vi.stubGlobal("fetch", fetchMock);
 
   await expect(
-    registerUser({ username: "bob", password: "secret", fee_addr: "0xfee" }),
+    registerUser({ username: "bob", password: "secret", feeAddr: "0xfee" }),
   ).resolves.toMatchObject({ id: 4, username: "bob", token });
   expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/api/user_info/create");
 });
@@ -74,12 +79,12 @@ test("修改资料提交到 update", async () => {
       id: 3,
       username: "amy",
       password: "",
-      fee_addr: "0xabc",
+      feeAddr: "0xabc",
     });
-    return json({ code: 0, message: "ok", data: { id: 3, username: "amy", fee_addr: "0xabc" } });
+    return json({ code: 0, message: "ok", data: { id: 3, username: "amy", feeAddr: "0xabc" } });
   });
   vi.stubGlobal("fetch", fetchMock);
 
-  await updateUser(3, { username: "amy", password: "", fee_addr: "0xabc" });
+  await updateUser(3, { username: "amy", password: "", feeAddr: "0xabc" });
   expect(String(fetchMock.mock.calls[0]?.[0])).toContain("/api/user_info/update");
 });

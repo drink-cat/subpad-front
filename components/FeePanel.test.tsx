@@ -15,15 +15,16 @@ vi.mock("@/lib/fee", async () => {
 const user = { id: 3, username: "alice", fee_addr: "", token: "token" };
 const row = {
   id: 1,
-  chainid: 1,
-  pool_id: "pool-1",
-  tx_hash: "0xtx",
-  fee_type: "platform",
-  fee_token: "0xusdc",
-  fee_decimal: 6,
-  fee_amount: 100,
-  fee_to: "0xfee",
-  created_at: "2026-10-07T15:09:00+08:00",
+  chainId: 1,
+  poolId: "pool-1",
+  txHash: "0xtx",
+  feeType: "platform",
+  feeToken: "0xusdc",
+  feeDecimal: 6,
+  feeAmount: 100,
+  feeTo: "0xfee",
+  createdAt: "2026-10-07T15:09:00+08:00",
+  updatedAt: "2026-10-07T15:09:00+08:00",
 };
 
 beforeEach(() => {
@@ -61,8 +62,8 @@ test("登录后展示列表，并按条件查询", async () => {
   fireEvent.click(screen.getByRole("button", { name: "查询" }));
 
   expect(api.listFees).toHaveBeenCalledWith({
-    chainid: 1,
-    pool_id: "pool-1",
-    fee_type: "platform",
+    chainId: 1,
+    poolId: "pool-1",
+    feeType: "platform",
   });
 });
