@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { claimUnits, isLocalUsdc, launchAddress, parseSwapAmount, swapAmounts, toPoolId } from "./swap";
+import { claimUnits, isLocalUsdc, launchAddress, parseSwapAmount, parseTradeAmount, swapAmounts, toPoolId } from "./swap";
 
 const config = {
   quoteToken: { localUsdc: "0xlocal", sepoliaUsdc: "0xsep" },
@@ -24,6 +24,12 @@ test("数量按小数位换算，领取固定 1000", () => {
   expect(parseSwapAmount("1.5", 6)).toBe(BigInt(1500000));
   expect(() => parseSwapAmount("0", 6)).toThrow("数量请填写大于 0 的数字");
   expect(claimUnits(6)).toBe(BigInt("1000000000"));
+});
+
+test("代币数量不乘 1e18，报价币仍按小数位换算", () => {
+  expect(parseTradeAmount("100", "token", 18)).toBe(BigInt(100));
+  expect(parseTradeAmount("1.5", "quote", 6)).toBe(BigInt(1500000));
+  expect(() => parseTradeAmount("1.5", "token", 18)).toThrow("数量小数位过多");
 });
 
 test("localUsdc 按地址识别，poolId 补成 32 字节", () => {

@@ -69,6 +69,10 @@ export async function readBalances(chainId: number, address: Address) {
   return { eth, usdc };
 }
 
+export function formatTokenAmount(value: bigint, decimals: number) {
+  return formatUnits(value, decimals);
+}
+
 export function formatEth(value: bigint) {
   const [whole, fraction = ""] = formatUnits(value, 18).split(".");
   const shown = fraction.replace(/0+$/, "").slice(0, 6);

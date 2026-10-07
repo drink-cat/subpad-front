@@ -12,12 +12,13 @@ import {
   claimUnits,
   isLocalUsdc,
   launchAddress,
-  parseSwapAmount,
+  parseTradeAmount,
   swapAmounts,
   toPoolId,
   type SwapBasis,
   type SwapSide,
 } from "@/lib/swap";
+import { formatTokenAmount } from "@/lib/balance";
 import { getToken, type Token } from "@/lib/token";
 import { appendTxLog, ChainLogError, describeError, traceContractWrite } from "@/lib/txLog";
 
@@ -60,6 +61,13 @@ function asAddress(value: string, message: string): Address {
   const addr = value.trim();
   if (!isAddress(addr)) throw new Error(message);
   return addr;
+}
+
+function balanceText(value: string | undefined, connected: boolean, failed: boolean) {
+  if (!connected) return "—";
+  if (failed) return "读取失败";
+  if (value === undefined) return "读取中";
+  return value;
 }
 
 function SubpadSummary({ pad }: { pad: Subpad }) {
@@ -129,6 +137,9 @@ export function SwapPanel({ tokenId }: { tokenId?: string }) {
   const [pending, setPending] = useState(false);
   const [txLog, setTxLog] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [balances, setBalances] = useState<{ token: string; quote: string } | null>(null);
+  const [balanceError, setBalanceError] = useState(false);
+  const [balanceTick, setBalanceTick] = useState(0);
 
   useEffect(() => {
     setMounted(true);
@@ -157,8 +168,38 @@ export function SwapPanel({ tokenId }: { tokenId?: string }) {
   }, [user, id, signOut]);
 
   const connected = mounted ? address : undefined;
+  const canReadBalance = Boolean(publicClient);
   const localQuote = Boolean(token && config && isLocalUsdc(token.quoteTokenAddr, config.quoteToken.localUsdc));
   const ready = Boolean(user && connected && token && !pending);
+
+  useEffect(() => {
+    if (!connected || !token || !publicClient) return;
+    const project = token.tokenAddr.trim();
+    const quote = token.quoteTokenAddr.trim();
+    if (!isAddress(project) || !isAddress(quote)) return;
+    let cancelled = false;
+    setBalances(null);
+    setBalanceError(false);
+    Promise.all([
+      publicClient.readContract({ address: project, abi: erc20Abi, functionName: "decimals" }),
+      publicClient.readContract({ address: project, abi: erc20Abi, functionName: "balanceOf", args: [connected] }),
+      publicClient.readContract({ address: quote, abi: erc20Abi, functionName: "decimals" }),
+      publicClient.readContract({ address: quote, abi: erc20Abi, functionName: "balanceOf", args: [connected] }),
+    ])
+      .then(([tokenDecimals, tokenBalance, quoteDecimals, quoteBalance]) => {
+        if (cancelled) return;
+        setBalances({
+          token: formatTokenAmount(tokenBalance, tokenDecimals),
+          quote: formatTokenAmount(quoteBalance, quoteDecimals),
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setBalanceError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [connected, token, canReadBalance, balanceTick]);
 
   async function decimalsOf(tokenAddress: Address) {
     if (!publicClient) throw new Error("请先连接钱包");
@@ -185,8 +226,8 @@ export function SwapPanel({ tokenId }: { tokenId?: string }) {
       const launch = launchAddress(config, token.chainId);
       const quote = asAddress(token.quoteTokenAddr, "计价币地址无效");
       const project = asAddress(token.tokenAddr, "合约地址无效");
-      const decimals = await decimalsOf(basis === "token" ? project : quote);
-      const parsed = parseSwapAmount(amount, decimals);
+      const quoteDecimals = basis === "quote" ? await decimalsOf(quote) : 0;
+      const parsed = parseTradeAmount(amount, basis, quoteDecimals);
       const amounts = swapAmounts(side, basis, parsed);
       const spend = side === "buy" ? [quote] : [project, quote];
       for (const tokenAddress of spend) {
@@ -206,6 +247,7 @@ export function SwapPanel({ tokenId }: { tokenId?: string }) {
         (hash) => client().waitForTransactionReceipt({ hash }),
       );
       setDone("已提交");
+      setBalanceTick((current) => current + 1);
     } catch (err) {
       if (!(err instanceof ChainLogError)) push({ type: "错误", error: describeError(err) });
       setError(err instanceof Error ? err.message : "请求失败");
@@ -231,6 +273,7 @@ export function SwapPanel({ tokenId }: { tokenId?: string }) {
         (hash) => client().waitForTransactionReceipt({ hash }),
       );
       setDone("已领取 1000");
+      setBalanceTick((current) => current + 1);
     } catch (err) {
       if (!(err instanceof ChainLogError)) push({ type: "错误", error: describeError(err) });
       setError(err instanceof Error ? err.message : "请求失败");
@@ -290,9 +333,23 @@ export function SwapPanel({ tokenId }: { tokenId?: string }) {
         {error ? <p className="form-error">{error}</p> : null}
         {done ? <p className="form-done">{done}</p> : null}
         <div className="swap-actions">
-          <button className="primary-button" type="submit" disabled={!ready}>
-            交易
-          </button>
+          <div className="swap-trade-row">
+            <button className="primary-button" type="submit" disabled={!ready}>
+              交易
+            </button>
+            {token ? (
+              <dl className="swap-balances" aria-label="余额">
+                <div>
+                  <dt>{token.tokenSymbol || "代币"}</dt>
+                  <dd data-testid="swap-token-balance">{balanceText(balances?.token, Boolean(connected), balanceError)}</dd>
+                </div>
+                <div>
+                  <dt>{token.quoteTokenSymbol || "报价币"}</dt>
+                  <dd data-testid="swap-quote-balance">{balanceText(balances?.quote, Boolean(connected), balanceError)}</dd>
+                </div>
+              </dl>
+            ) : null}
+          </div>
           {localQuote ? (
             <button className="primary-button" type="button" onClick={() => void onClaim()} disabled={!ready}>
               领取本地usdc

@@ -35,6 +35,15 @@ export function parseSwapAmount(value: string, decimals: number) {
   }
 }
 
+/** 按代币数量时用输入的整数，不乘 1e18。按报价币数量时按报价币小数位换算。 */
+export function parseTradeAmount(value: string, basis: SwapBasis, quoteDecimals: number) {
+  if (basis === "quote") return parseSwapAmount(value, quoteDecimals);
+  const text = value.trim();
+  if (!/^\d+(\.\d+)?$/.test(text) || /^0+(\.0+)?$/.test(text)) throw new Error("数量请填写大于 0 的数字");
+  if (text.includes(".")) throw new Error("数量小数位过多");
+  return BigInt(text);
+}
+
 export function claimUnits(decimals: number) {
   return parseUnits(localUsdcClaim, decimals);
 }

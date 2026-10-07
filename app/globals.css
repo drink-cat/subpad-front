@@ -675,6 +675,38 @@ input {
   gap: 12px;
 }
 
+.swap-trade-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px 28px;
+}
+
+.swap-balances {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
+}
+
+.swap-balances div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.swap-balances dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.swap-balances dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
 .fee-table .mono {
   font-variant-numeric: tabular-nums;
   word-break: break-all;

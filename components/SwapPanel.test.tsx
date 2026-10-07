@@ -86,7 +86,10 @@ beforeEach(() => {
   api.getPublicConfig.mockResolvedValue(config());
   api.write.mockResolvedValue("0xhash");
   api.wait.mockResolvedValue({});
-  api.read.mockImplementation(async ({ address }: { address: string }) => (address === project ? 18 : 6));
+  api.read.mockImplementation(async ({ address, functionName }: { address: string; functionName: string }) => {
+    if (functionName === "balanceOf") return address === project ? BigInt("123456789012345678") : BigInt(2_500_000);
+    return address === project ? 18 : 6;
+  });
 });
 
 test("token id 无效", () => {
@@ -122,6 +125,20 @@ test("展示 subpad 和 token，localUsdc 可以领取", async () => {
   expect(screen.getByRole("button", { name: "领取本地usdc" })).toBeEnabled();
 });
 
+test("交易按钮右侧展示两种币余额", async () => {
+  render(
+    <AuthProvider initialUser={user}>
+      <SwapPanel tokenId="9" />
+    </AuthProvider>,
+  );
+  expect(await screen.findByTestId("swap-token-balance")).toHaveTextContent("0.123456789012345678");
+  expect(screen.getByTestId("swap-quote-balance")).toHaveTextContent("2.5");
+  const row = screen.getByRole("button", { name: "交易" }).parentElement;
+  expect(row).toContainElement(screen.getByTestId("swap-token-balance"));
+  expect(row).toContainElement(screen.getByTestId("swap-quote-balance"));
+  expect(row).not.toContainElement(screen.getByRole("button", { name: "领取本地usdc" }));
+});
+
 test("报价币不是 localUsdc 时不显示领取", async () => {
   api.getPublicConfig.mockResolvedValue(config("0x5555555555555555555555555555555555555555"));
   render(
@@ -140,7 +157,7 @@ test("买入按代币数量授权报价币并提交", async () => {
     </AuthProvider>,
   );
   expect(await screen.findByText("Foods")).toBeInTheDocument();
-  fireEvent.change(screen.getByLabelText("数量"), { target: { value: "1.5" } });
+  fireEvent.change(screen.getByLabelText("数量"), { target: { value: "100" } });
   fireEvent.click(screen.getByRole("button", { name: "交易" }));
 
   await screen.findByText("已提交");
@@ -161,7 +178,7 @@ test("买入按代币数量授权报价币并提交", async () => {
     args: [
       {
         poolId: `0x${"0".repeat(62)}01`,
-        tokenAmount: BigInt("1500000000000000000"),
+        tokenAmount: BigInt(100),
         quoteTokenAmount: BigInt(0),
       },
     ],
