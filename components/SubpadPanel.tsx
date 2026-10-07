@@ -29,6 +29,10 @@ function createTokenHref(brand?: string) {
   return `http://${host}/subpad/createToken`;
 }
 
+function brandPadHref(brand: string) {
+  return `http://${brand}.launch.o1.local/subpad/`;
+}
+
 function PadActions({
   brand,
   id,
@@ -298,7 +302,11 @@ export function SubpadPanel() {
             <tbody>
               {rows.map((item) => (
                 <tr key={item.id}>
-                  <td>{item.brand}</td>
+                  <td>
+                    <a className="brand-button" href={brandPadHref(item.brand)}>
+                      {item.brand}
+                    </a>
+                  </td>
                   <td>{item.nameFull}</td>
                   <td>{item.id}</td>
                   <td>{swapLabel(item.swapType)}</td>

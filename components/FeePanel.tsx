@@ -117,6 +117,15 @@ export function FeePanel() {
       {rows.length > 0 ? (
         <div className="table-wrap">
           <table className="fee-table">
+            <colgroup>
+              <col />
+              <col />
+              <col />
+              <col />
+              <col />
+              <col />
+              <col />
+            </colgroup>
             <thead>
               <tr>
                 <th>网络</th>
@@ -132,7 +141,7 @@ export function FeePanel() {
               {rows.map((item) => (
                 <tr key={item.id}>
                   <td>{item.chainId}</td>
-                  <td>{item.poolId}</td>
+                  <td className="mono">{item.poolId}</td>
                   <td className="mono">{item.txHash}</td>
                   <td>{feeTypeLabel(item.feeType)}</td>
                   <td className="mono">

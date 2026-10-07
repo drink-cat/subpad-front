@@ -557,6 +557,42 @@ input {
   border-collapse: collapse;
 }
 
+.fee-table {
+  table-layout: fixed;
+  min-width: 1120px;
+}
+
+.fee-table col:nth-child(1) {
+  width: 5.72%;
+}
+
+.fee-table col:nth-child(2),
+.fee-table col:nth-child(3) {
+  width: 18.75%;
+}
+
+.fee-table col:nth-child(4) {
+  width: 7.5%;
+}
+
+.fee-table col:nth-child(5),
+.fee-table col:nth-child(6) {
+  width: 17.5%;
+}
+
+.fee-table col:nth-child(7) {
+  width: 14.28%;
+}
+
+.fee-table th:nth-child(1),
+.fee-table td:nth-child(1),
+.fee-table th:nth-child(4),
+.fee-table td:nth-child(4),
+.fee-table th:nth-child(7),
+.fee-table td:nth-child(7) {
+  white-space: nowrap;
+}
+
 .fee-table th,
 .fee-table td,
 .subpad-table th,
@@ -589,6 +625,26 @@ input {
 .token-table th:last-child,
 .token-table td:last-child {
   text-align: right;
+}
+
+.brand-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.brand-button:hover {
+  background: #f7f4ee;
 }
 
 .row-actions {
