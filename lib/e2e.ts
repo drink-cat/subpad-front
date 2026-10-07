@@ -1,8 +1,15 @@
+import { sepolia } from "wagmi/chains";
+
 /** Anvil 默认第一个账户，只用于本地 e2e。 */
 const ANVIL_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" as const;
 
 export function isLocalEnv() {
   return process.env.NEXT_PUBLIC_CHAIN_ENV !== "testnet";
+}
+
+/** npm run dev:testnet 固定走 Sepolia，本地网走 Anvil。 */
+export function activeChainId() {
+  return isLocalEnv() ? defaultE2E().chainId : sepolia.id;
 }
 
 export type E2EInjected = {

@@ -13,6 +13,7 @@ const api = vi.hoisted(() => ({
   write: vi.fn(),
   read: vi.fn(),
   wait: vi.fn(),
+  providerRequest: vi.fn(),
   address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as string | undefined,
   chainId: 31337 as number | undefined,
 }));
@@ -32,7 +33,14 @@ vi.mock("@/lib/subpad", async () => {
 });
 
 vi.mock("wagmi", () => ({
-  useConnection: () => ({ address: api.address, chainId: api.chainId }),
+  useConnection: () => ({
+    address: api.address,
+    chainId: api.chainId,
+    connector: {
+      getChainId: async () => api.chainId,
+      getProvider: async () => ({ request: api.providerRequest }),
+    },
+  }),
   usePublicClient: () => ({ readContract: api.read, waitForTransactionReceipt: api.wait }),
   useWriteContract: () => ({ writeContractAsync: api.write }),
 }));
@@ -64,6 +72,8 @@ beforeEach(() => {
   api.write.mockReset();
   api.read.mockReset();
   api.wait.mockReset();
+  api.providerRequest.mockReset();
+  api.providerRequest.mockResolvedValue(null);
   api.createToken.mockResolvedValue({});
   api.hostSubpad.mockResolvedValue(foods);
   api.getPublicConfig.mockResolvedValue({
@@ -143,6 +153,31 @@ test("页面上方展示 subpad 信息，并提交 tokenName 和 tokenSymbol", a
   expect(log.value).toContain("0xhash");
   expect(log.value).toContain('"type": "回执"');
   expect(log.value).toContain(launchSupply.toString());
+});
+
+test("钱包停在别的网络时，仍按启动命令对应的链发币", async () => {
+  api.chainId = 1;
+  render(
+    <AuthProvider initialUser={user}>
+      <IssuePanel />
+    </AuthProvider>,
+  );
+
+  fireEvent.change(await screen.findByLabelText("tokenName"), { target: { value: "Foods" } });
+  fireEvent.change(screen.getByLabelText("tokenSymbol"), { target: { value: "FOOD" } });
+  fireEvent.click(screen.getByRole("button", { name: "提交" }));
+
+  expect(await screen.findByText("已提交")).toBeInTheDocument();
+  expect(screen.queryByText("未配置发币合约")).not.toBeInTheDocument();
+  expect(api.providerRequest).not.toHaveBeenCalled();
+  expect(api.createToken).toHaveBeenCalledWith({
+    subpadId: 7,
+    tokenName: "Foods",
+    tokenSymbol: "FOOD",
+    chainId: 31337,
+  });
+  expect(api.write.mock.calls[0][0].address).toBe(launch);
+  expect(api.write.mock.calls[0][0].chainId).toBeUndefined();
 });
 
 test("发币失败时文本框留下调用和错误", async () => {

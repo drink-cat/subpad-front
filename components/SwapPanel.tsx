@@ -7,6 +7,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { TxLog } from "@/components/TxLog";
 import { ApiError } from "@/lib/api";
 import { getPublicConfig, type PublicConfig } from "@/lib/config";
+import { activeChainId } from "@/lib/e2e";
 import { hostSubpad, statusLabel, swapLabel, type Subpad } from "@/lib/subpad";
 import {
   claimUnits,
@@ -122,7 +123,8 @@ export function SwapPanel({ tokenId }: { tokenId?: string }) {
   const id = parseTokenId(tokenId);
   const { user, signOut } = useAuth();
   const { address } = useConnection();
-  const publicClient = usePublicClient();
+  const chainId = activeChainId();
+  const publicClient = usePublicClient({ chainId });
   const { writeContractAsync } = useWriteContract();
   const [token, setToken] = useState<Token | null>(null);
   const [pad, setPad] = useState<Subpad | null>(null);
@@ -223,7 +225,7 @@ export function SwapPanel({ tokenId }: { tokenId?: string }) {
     setDone("");
     setTxLog("");
     try {
-      const launch = launchAddress(config, token.chainId);
+      const launch = launchAddress(config, chainId);
       const quote = asAddress(token.quoteTokenAddr, "计价币地址无效");
       const project = asAddress(token.tokenAddr, "合约地址无效");
       const quoteDecimals = basis === "quote" ? await decimalsOf(quote) : 0;

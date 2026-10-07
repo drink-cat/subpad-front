@@ -65,13 +65,6 @@ export const createTokenAbi = [
     ],
     outputs: [],
   },
-  {
-    type: "function",
-    name: "owner",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "address" }],
-  },
 ] as const;
 
 export function createTokenParams(input: {

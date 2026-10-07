@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { getAddress } from "viem";
 import { useConnection, usePublicClient, useWriteContract } from "wagmi";
 import { useAuth } from "@/components/AuthProvider";
 import { TxLog } from "@/components/TxLog";
 import { ApiError } from "@/lib/api";
 import { getPublicConfig, type PublicConfig } from "@/lib/config";
-import { defaultE2E, isLocalEnv } from "@/lib/e2e";
+import { activeChainId } from "@/lib/e2e";
 import { launchAddress } from "@/lib/swap";
 import { hostSubpad, statusLabel, swapLabel, type Subpad } from "@/lib/subpad";
 import { createToken, createTokenAbi, createTokenParams, selectedQuoteToken } from "@/lib/token";
@@ -42,8 +41,9 @@ function SubpadSummary({ pad }: { pad: Subpad }) {
 
 export function IssuePanel() {
   const { user, signOut } = useAuth();
-  const { address, chainId } = useConnection();
-  const publicClient = usePublicClient();
+  const { address } = useConnection();
+  const chainId = activeChainId();
+  const publicClient = usePublicClient({ chainId });
   const { writeContractAsync } = useWriteContract();
   const [pad, setPad] = useState<Subpad | null>(null);
   const [infoError, setInfoError] = useState("");
@@ -83,15 +83,9 @@ export function IssuePanel() {
     };
   }, [signOut]);
 
-  const activeChainId = chainId ?? publicClient?.chain?.id ?? (isLocalEnv() ? defaultE2E().chainId : undefined);
-
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!user || !connected || !pad || !config || !publicClient) return;
-    if (!activeChainId) {
-      setError("未识别当前网络");
-      return;
-    }
     const name = tokenName.trim();
     const symbol = tokenSymbol.trim();
     if (!name || !symbol) {
@@ -114,14 +108,12 @@ export function IssuePanel() {
         subpadId: pad.id,
         subpadFeeTo: pad.feeAddr,
       });
-      const launch = launchAddress(config, activeChainId);
-      const owner = await publicClient.readContract({ address: launch, abi: createTokenAbi, functionName: "owner" });
-      if (getAddress(owner) !== getAddress(connected)) throw new Error("当前钱包不是发币合约 owner");
+      const launch = launchAddress(config, chainId);
       await createToken({
         subpadId: pad.id,
         tokenName: name,
         tokenSymbol: symbol,
-        chainId: activeChainId,
+        chainId,
       });
       await traceContractWrite(
         push,
