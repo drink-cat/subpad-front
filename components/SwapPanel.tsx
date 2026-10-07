@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { erc20Abi, isAddress, maxUint256, type Address } from "viem";
 import { useConnection, usePublicClient, useWriteContract } from "wagmi";
 import { useAuth } from "@/components/AuthProvider";
+import { TxLog } from "@/components/TxLog";
 import { ApiError } from "@/lib/api";
 import { brandFromHost } from "@/lib/brand";
 import { getPublicConfig, type PublicConfig } from "@/lib/config";
@@ -19,6 +20,7 @@ import {
   type SwapSide,
 } from "@/lib/swap";
 import { getToken, type Token } from "@/lib/token";
+import { appendTxLog, ChainLogError, describeError, traceContractWrite } from "@/lib/txLog";
 
 const launchAbi = [
   {
@@ -122,6 +124,7 @@ export function SwapPanel({ tokenId }: { tokenId?: string }) {
   const [error, setError] = useState("");
   const [done, setDone] = useState("");
   const [pending, setPending] = useState(false);
+  const [txLog, setTxLog] = useState("");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -167,15 +170,13 @@ export function SwapPanel({ tokenId }: { tokenId?: string }) {
     return publicClient.readContract({ address: tokenAddress, abi: erc20Abi, functionName: "decimals" });
   }
 
-  async function approve(tokenAddress: Address, spender: Address) {
+  function push(entry: unknown) {
+    setTxLog((current) => appendTxLog(current, entry));
+  }
+
+  function client() {
     if (!publicClient) throw new Error("请先连接钱包");
-    const hash = await writeContractAsync({
-      address: tokenAddress,
-      abi: erc20Abi,
-      functionName: "approve",
-      args: [spender, maxUint256],
-    });
-    await publicClient.waitForTransactionReceipt({ hash });
+    return publicClient;
   }
 
   async function onTrade(event: React.FormEvent) {
@@ -184,6 +185,7 @@ export function SwapPanel({ tokenId }: { tokenId?: string }) {
     setPending(true);
     setError("");
     setDone("");
+    setTxLog("");
     try {
       const launch = launchAddress(config, token.chainId);
       const quote = asAddress(token.quoteTokenAddr, "计价币地址无效");
@@ -192,16 +194,25 @@ export function SwapPanel({ tokenId }: { tokenId?: string }) {
       const parsed = parseSwapAmount(amount, decimals);
       const amounts = swapAmounts(side, basis, parsed);
       const spend = side === "buy" ? [quote] : [project, quote];
-      for (const tokenAddress of spend) await approve(tokenAddress, launch);
-      const hash = await writeContractAsync({
-        address: launch,
-        abi: launchAbi,
-        functionName: "mockSwap",
-        args: [{ poolId: toPoolId(token.poolId), ...amounts }],
-      });
-      await publicClient.waitForTransactionReceipt({ hash });
+      for (const tokenAddress of spend) {
+        const args = [launch, maxUint256] as const;
+        await traceContractWrite(
+          push,
+          { address: tokenAddress, functionName: "approve", args },
+          () => writeContractAsync({ address: tokenAddress, abi: erc20Abi, functionName: "approve", args }),
+          (hash) => client().waitForTransactionReceipt({ hash }),
+        );
+      }
+      const swapArgs = [{ poolId: toPoolId(token.poolId), ...amounts }] as const;
+      await traceContractWrite(
+        push,
+        { address: launch, functionName: "mockSwap", args: swapArgs },
+        () => writeContractAsync({ address: launch, abi: launchAbi, functionName: "mockSwap", args: swapArgs }),
+        (hash) => client().waitForTransactionReceipt({ hash }),
+      );
       setDone("已提交");
     } catch (err) {
+      if (!(err instanceof ChainLogError)) push({ type: "错误", error: describeError(err) });
       setError(err instanceof Error ? err.message : "请求失败");
     } finally {
       setPending(false);
@@ -213,18 +224,20 @@ export function SwapPanel({ tokenId }: { tokenId?: string }) {
     setPending(true);
     setError("");
     setDone("");
+    setTxLog("");
     try {
       const quote = asAddress(token.quoteTokenAddr, "计价币地址无效");
       const decimals = await decimalsOf(quote);
-      const hash = await writeContractAsync({
-        address: quote,
-        abi: mintAbi,
-        functionName: "mintSelfFree",
-        args: [claimUnits(decimals)],
-      });
-      await publicClient.waitForTransactionReceipt({ hash });
+      const args = [claimUnits(decimals)] as const;
+      await traceContractWrite(
+        push,
+        { address: quote, functionName: "mintSelfFree", args },
+        () => writeContractAsync({ address: quote, abi: mintAbi, functionName: "mintSelfFree", args }),
+        (hash) => client().waitForTransactionReceipt({ hash }),
+      );
       setDone("已领取 1000");
     } catch (err) {
+      if (!(err instanceof ChainLogError)) push({ type: "错误", error: describeError(err) });
       setError(err instanceof Error ? err.message : "请求失败");
     } finally {
       setPending(false);
@@ -293,6 +306,7 @@ export function SwapPanel({ tokenId }: { tokenId?: string }) {
           ) : null}
         </div>
       </form>
+      <TxLog value={txLog} />
     </main>
   );
 }

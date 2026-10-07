@@ -140,6 +140,31 @@ test("页面上方展示 subpad 信息，并提交 tokenName 和 tokenSymbol", a
     }),
   );
   expect(api.createToken.mock.invocationCallOrder[0]).toBeLessThan(api.write.mock.invocationCallOrder[0]);
+  const log = screen.getByLabelText("交易与回执") as HTMLTextAreaElement;
+  expect(log.value).toContain('"type": "交易"');
+  expect(log.value).toContain("createToken");
+  expect(log.value).toContain("0xhash");
+  expect(log.value).toContain('"type": "回执"');
+  expect(log.value).toContain(launchSupply.toString());
+});
+
+test("发币失败时文本框留下调用和错误", async () => {
+  api.write.mockRejectedValue(Object.assign(new Error("execution reverted"), { shortMessage: "owner mismatch" }));
+  render(
+    <AuthProvider initialUser={user}>
+      <IssuePanel subpadId="7" />
+    </AuthProvider>,
+  );
+  fireEvent.change(await screen.findByLabelText("tokenName"), { target: { value: "Foods" } });
+  fireEvent.change(screen.getByLabelText("tokenSymbol"), { target: { value: "FOOD" } });
+  fireEvent.click(screen.getByRole("button", { name: "提交" }));
+
+  expect(await screen.findByText("execution reverted")).toBeInTheDocument();
+  const log = screen.getByLabelText("交易与回执") as HTMLTextAreaElement;
+  expect(log.value).toContain('"type": "错误"');
+  expect(log.value).toContain("createToken");
+  expect(log.value).toContain("owner mismatch");
+  expect(log.value.match(/"type": "错误"/g)).toHaveLength(1);
 });
 
 test("默认 pad 按域名展示 subpad，发币不带 padId", async () => {

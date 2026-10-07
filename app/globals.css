@@ -361,6 +361,17 @@ input {
   resize: vertical;
 }
 
+.tx-log {
+  margin-top: 24px;
+}
+
+.tx-log textarea {
+  min-height: 200px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .primary-button,
 .text-button {
   border: 0;

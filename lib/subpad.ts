@@ -1,4 +1,5 @@
-import { request } from "@/lib/api";
+import { request, subpadInfoHeaderValue } from "@/lib/api";
+import { isLocalEnv } from "@/lib/e2e";
 
 export type Subpad = {
   id: number;
@@ -47,6 +48,39 @@ export type SubpadQuery = {
   status?: number;
   swapType?: string;
 };
+
+export function defaultSubpad(): Subpad {
+  return {
+    id: 0,
+    userId: 0,
+    feeAddr: "",
+    brand: "",
+    nameFull: "默认 pad",
+    status: 1,
+    swapType: isLocalEnv() ? "mockSwap" : "uniSwap",
+    description: "",
+    createdAt: "",
+    updatedAt: "",
+  };
+}
+
+export function parseSubpadHeader(raw: string | null) {
+  if (!raw) return null;
+  let row: Subpad;
+  try {
+    row = JSON.parse(raw) as Subpad;
+  } catch {
+    throw new Error("subpad 信息无效");
+  }
+  if (!row || typeof row.id !== "number" || row.id <= 0) throw new Error("subpad 信息无效");
+  return row;
+}
+
+/** 读最近一次接口响应的 X-Subpad-Info。没有这个头时是默认 pad，padId 为 0。 */
+export async function hostSubpad() {
+  await request<unknown>("/api/config", undefined, false);
+  return parseSubpadHeader(subpadInfoHeaderValue()) ?? defaultSubpad();
+}
 
 export function getSubpad(id: number) {
   return request<Subpad>(`/api/subpad_info/get?id=${id}`);

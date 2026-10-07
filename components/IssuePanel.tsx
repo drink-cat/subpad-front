@@ -4,33 +4,32 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { getAddress } from "viem";
 import { useConnection, usePublicClient, useWriteContract } from "wagmi";
 import { useAuth } from "@/components/AuthProvider";
+import { TxLog } from "@/components/TxLog";
 import { ApiError } from "@/lib/api";
-import { brandFromHost } from "@/lib/brand";
 import { getPublicConfig, type PublicConfig } from "@/lib/config";
 import { defaultE2E, isLocalEnv } from "@/lib/e2e";
 import { launchAddress } from "@/lib/swap";
-import { getSubpad, listSubpads, statusLabel, swapLabel, type Subpad } from "@/lib/subpad";
+import { hostSubpad, statusLabel, swapLabel, type Subpad } from "@/lib/subpad";
 import { createToken, createTokenAbi, createTokenParams, selectedQuoteToken } from "@/lib/token";
+import { appendTxLog, ChainLogError, describeError, traceContractWrite } from "@/lib/txLog";
 
-function parsePadId(value: string | undefined) {
-  if (value === undefined) return null;
-  if (!/^[1-9]\d*$/.test(value)) return "invalid" as const;
-  return Number(value);
-}
-
-function SubpadSummary({ pad, showId }: { pad: Subpad; showId: boolean }) {
+function SubpadSummary({ pad }: { pad: Subpad }) {
+  if (pad.id === 0) {
+    return (
+      <dl>
+        <dt>品牌</dt>
+        <dd>默认 pad</dd>
+      </dl>
+    );
+  }
   return (
     <dl>
       <dt>品牌</dt>
       <dd>{pad.brand}</dd>
       <dt>全称</dt>
       <dd>{pad.nameFull}</dd>
-      {showId ? (
-        <>
-          <dt>padId</dt>
-          <dd>{pad.id}</dd>
-        </>
-      ) : null}
+      <dt>padId</dt>
+      <dd>{pad.id}</dd>
       <dt>状态</dt>
       <dd>{statusLabel(pad.status)}</dd>
       <dt>Swap</dt>
@@ -41,8 +40,7 @@ function SubpadSummary({ pad, showId }: { pad: Subpad; showId: boolean }) {
   );
 }
 
-export function IssuePanel({ subpadId }: { subpadId?: string }) {
-  const padId = parsePadId(subpadId);
+export function IssuePanel() {
   const { user, signOut } = useAuth();
   const { address, chainId } = useConnection();
   const publicClient = usePublicClient();
@@ -57,6 +55,7 @@ export function IssuePanel({ subpadId }: { subpadId?: string }) {
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
+  const [txLog, setTxLog] = useState("");
   const connected = useSyncExternalStore(
     () => () => {},
     () => address,
@@ -64,56 +63,34 @@ export function IssuePanel({ subpadId }: { subpadId?: string }) {
   );
 
   useEffect(() => {
-    if (padId === "invalid") return;
     let cancelled = false;
-    getPublicConfig()
-      .then((nextConfig) => {
+    Promise.all([getPublicConfig(), hostSubpad()])
+      .then(([nextConfig, nextPad]) => {
         if (cancelled) return;
         setConfig(nextConfig);
         const next = selectedQuoteToken(nextConfig);
         setQuote(`${next.name} ${next.addr}`);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : "请求失败");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [padId]);
-
-  useEffect(() => {
-    if (!user || padId === "invalid") return;
-    let cancelled = false;
-    const brand = padId === null ? brandFromHost(window.location.host) : null;
-    const task =
-      padId === null
-        ? brand
-          ? listSubpads({ brand }).then((rows) => rows[0] ?? null)
-          : Promise.resolve(null)
-        : getSubpad(padId);
-    task
-      .then((next) => {
-        if (cancelled) return;
-        setPad(next);
+        setPad(nextPad);
         setInfoLoaded(true);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
         if (err instanceof ApiError && err.status === 401) signOut();
-        setInfoError(err instanceof Error ? err.message : "请求失败");
+        const message = err instanceof Error ? err.message : "请求失败";
+        setError(message);
+        setInfoError(message);
         setInfoLoaded(true);
       });
     return () => {
       cancelled = true;
     };
-  }, [user, padId, signOut]);
+  }, [signOut]);
 
   const activeChainId = chainId ?? publicClient?.chain?.id ?? (isLocalEnv() ? defaultE2E().chainId : undefined);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (!user || !connected || !pad || !config || !publicClient || padId === "invalid") return;
+    if (!user || !connected || !pad || !config || !publicClient) return;
     if (!activeChainId) {
       setError("未识别当前网络");
       return;
@@ -128,6 +105,8 @@ export function IssuePanel({ subpadId }: { subpadId?: string }) {
     setPending(true);
     setError("");
     setDone(false);
+    setTxLog("");
+    const push = (entry: unknown) => setTxLog((current) => appendTxLog(current, entry));
     try {
       const quoteToken = selectedQuoteToken(config).addr;
       const params = createTokenParams({
@@ -135,40 +114,38 @@ export function IssuePanel({ subpadId }: { subpadId?: string }) {
         tokenName: name,
         tokenSymbol: symbol,
         quoteToken,
-        subpadId: padId === null ? undefined : padId,
+        subpadId: pad.id === 0 ? undefined : pad.id,
         subpadFeeTo: pad.feeAddr,
       });
       const launch = launchAddress(config, activeChainId);
       const owner = await publicClient.readContract({ address: launch, abi: createTokenAbi, functionName: "owner" });
       if (getAddress(owner) !== getAddress(connected)) throw new Error("当前钱包不是发币合约 owner");
       await createToken({
-        ...(padId === null ? {} : { subpadId: padId }),
+        ...(pad.id === 0 ? {} : { subpadId: pad.id }),
         tokenName: name,
         tokenSymbol: symbol,
         chainId: activeChainId,
       });
-      const hash = await writeContractAsync({
-        address: launch,
-        abi: createTokenAbi,
-        functionName: "createToken",
-        args: [params],
-      });
-      await publicClient.waitForTransactionReceipt({ hash });
+      await traceContractWrite(
+        push,
+        { address: launch, functionName: "createToken", args: [params] },
+        () =>
+          writeContractAsync({
+            address: launch,
+            abi: createTokenAbi,
+            functionName: "createToken",
+            args: [params],
+          }),
+        (hash) => publicClient.waitForTransactionReceipt({ hash }),
+      );
       setDone(true);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) signOut();
+      if (!(err instanceof ChainLogError)) push({ type: "错误", error: describeError(err) });
       setError(err instanceof Error ? err.message : "请求失败");
     } finally {
       setPending(false);
     }
-  }
-
-  if (padId === "invalid") {
-    return (
-      <main className="page">
-        <p className="page-hint">pad 不存在。</p>
-      </main>
-    );
   }
 
   return (
@@ -176,9 +153,8 @@ export function IssuePanel({ subpadId }: { subpadId?: string }) {
       <section className="subpad-summary" data-testid="subpad-info">
         <h2>subpad 信息</h2>
         {!user ? <p className="page-hint">请先登录后再发币。</p> : null}
-        {user && infoError ? <p className="form-error">{infoError}</p> : null}
-        {user && infoLoaded && !infoError && !pad ? <p className="page-hint">没有找到 subpad。</p> : null}
-        {pad ? <SubpadSummary pad={pad} showId={padId !== null} /> : null}
+        {infoError ? <p className="form-error">{infoError}</p> : null}
+        {pad ? <SubpadSummary pad={pad} /> : null}
       </section>
       <div className="page-bar">
         <h1>发币</h1>
@@ -202,6 +178,7 @@ export function IssuePanel({ subpadId }: { subpadId?: string }) {
           提交
         </button>
       </form>
+      <TxLog value={txLog} />
     </main>
   );
 }

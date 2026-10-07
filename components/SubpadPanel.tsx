@@ -35,7 +35,7 @@ function PadActions({
   onEdit?: () => void;
   onDelete?: () => void;
 }) {
-  const createTokenHref = id === undefined ? "/subpad/createToken" : `/subpad/createToken/${id}`;
+  const createTokenHref = "/subpad/createToken";
   return (
     <div className="row-actions">
       {locked ? (

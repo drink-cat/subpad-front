@@ -14,6 +14,11 @@ type BaseResp<T> = {
 };
 
 let authToken: string | null = null;
+let subpadInfoHeader: string | null = null;
+
+export function subpadInfoHeaderValue() {
+  return subpadInfoHeader;
+}
 
 export function setAuthToken(token: string | null) {
   authToken = token;
@@ -46,6 +51,7 @@ export async function request<T>(path: string, init?: RequestInit, auth = true):
   if (auth && authToken) headers.set("Authorization", `Bearer ${authToken}`);
 
   const response = await fetch(`/backend${path}`, { ...init, headers });
+  subpadInfoHeader = response.headers?.get("X-Subpad-Info") ?? null;
   let body: BaseResp<T> | null = null;
   try {
     body = (await response.json()) as BaseResp<T>;

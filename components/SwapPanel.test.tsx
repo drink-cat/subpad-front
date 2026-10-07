@@ -153,6 +153,11 @@ test("买入按代币数量授权报价币并提交", async () => {
     functionName: "approve",
     args: [launch, maxUint256],
   });
+  const log = screen.getByLabelText("交易与回执") as HTMLTextAreaElement;
+  expect(log.value).toContain("approve");
+  expect(log.value).toContain("mockSwap");
+  expect(log.value).toContain("0xhash");
+  expect(log.value.match(/"type": "回执"/g)).toHaveLength(2);
   expect(api.write.mock.calls[1][0]).toMatchObject({
     address: launch,
     functionName: "mockSwap",
@@ -200,4 +205,7 @@ test("领取本地 usdc 给自己铸 1000", async () => {
       args: [BigInt("1000000000")],
     }),
   );
+  const log = screen.getByLabelText("交易与回执") as HTMLTextAreaElement;
+  expect(log.value).toContain("mintSelfFree");
+  expect(log.value).toContain('"type": "回执"');
 });
