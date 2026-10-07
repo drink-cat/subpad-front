@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useConnect, useConnection, useDisconnect } from "wagmi";
+import { sepolia } from "wagmi/chains";
 import { QrCode } from "@/components/QrCode";
+import { WalletBalances } from "@/components/WalletBalances";
 import { WalletMark } from "@/components/WalletMark";
 import { shortAddress } from "@/lib/address";
-import { isLocalEnv } from "@/lib/e2e";
+import { defaultE2E, isLocalEnv } from "@/lib/e2e";
 import { getWalletConnectProjectId } from "@/lib/env";
 import { getWalletRelayError } from "@/lib/wagmi";
 import { RECOGNIZED_WALLET_KEY, WALLETS, type WalletOption } from "@/lib/wallets";
@@ -28,7 +30,7 @@ function explainConnectError(error: unknown) {
 }
 
 export function WalletButton() {
-  const { address, chain, isConnected } = useConnection();
+  const { address, isConnected } = useConnection();
   const { connectors, connectAsync } = useConnect();
   const { disconnectAsync } = useDisconnect();
   const connector = connectors.find((item) => item.id === "walletConnect");
@@ -171,6 +173,8 @@ export function WalletButton() {
 
   const label = isConnected && address ? shortAddress(address) : local ? "连接 E2E" : "连接钱包";
   const walletName = local ? "E2E" : (recognized ?? "WalletConnect");
+  const networkName = local ? "Local" : "Sepolia";
+  const balanceChainId = local ? defaultE2E().chainId : sepolia.id;
 
   return (
     <>
@@ -194,8 +198,9 @@ export function WalletButton() {
                 <p className="menu-kicker">已识别钱包</p>
                 <p className="menu-address">{address}</p>
                 <p className="menu-meta">
-                  {walletName} · {chain?.name ?? "Ethereum"}
+                  {walletName} · {networkName}
                 </p>
+                <WalletBalances address={address} chainId={balanceChainId} />
                 <button type="button" className="menu-action" onClick={() => void copyAddress()}>
                   {copied ? "已复制" : "复制地址"}
                 </button>

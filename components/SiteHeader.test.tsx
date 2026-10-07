@@ -7,6 +7,17 @@ const behavior = vi.hoisted(() => ({
   mode: "success" as "success" | "reject" | "error" | "uri",
 }));
 
+vi.mock("@/lib/balance", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/balance")>("@/lib/balance");
+  return {
+    ...actual,
+    readBalances: vi.fn(async () => ({
+      eth: BigInt("1500000000000000000"),
+      usdc: BigInt(2000000),
+    })),
+  };
+});
+
 vi.mock("wagmi/connectors/walletConnect", async () => {
   const { createConnector } = await import("wagmi");
   const { sepolia } = await import("wagmi/chains");
@@ -160,6 +171,10 @@ test("测试网连接成功后可以断开", async () => {
   const accountButton = await screen.findByTestId("wallet-address");
   expect(accountButton).toHaveTextContent("0x7099…79C8");
   fireEvent.click(accountButton);
+  await waitFor(() => {
+    expect(screen.getByTestId("eth-balance")).toHaveTextContent("1.5");
+  });
+  expect(screen.getByTestId("usdc-balance")).toHaveTextContent("2.00");
   fireEvent.click(screen.getByRole("button", { name: "断开连接" }));
 
   expect(await screen.findByTestId("connect-wallet")).toHaveTextContent("连接钱包");

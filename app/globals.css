@@ -167,6 +167,31 @@ input {
   line-height: 1.6;
 }
 
+.balance-list {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 4px;
+}
+
+.balance-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.balance-row dt {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.balance-row dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
 .menu-action {
   margin-top: 8px;
   padding: 10px 8px;
