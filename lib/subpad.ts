@@ -48,6 +48,10 @@ export type SubpadQuery = {
   swapType?: string;
 };
 
+export function getSubpad(id: number) {
+  return request<Subpad>(`/api/subpad_info/get?id=${id}`);
+}
+
 export function listSubpads(query: SubpadQuery = {}) {
   const params = new URLSearchParams();
   if (query.userId !== undefined) params.set("userId", String(query.userId));
@@ -62,5 +66,19 @@ export function createSubpad(input: SubpadInput) {
   return request<Subpad>("/api/subpad_info/create", {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+export function updateSubpad(input: SubpadInput & { id: number; feeAddr: string }) {
+  return request<Subpad>("/api/subpad_info/update", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteSubpad(id: number) {
+  return request<null>("/api/subpad_info/delete", {
+    method: "POST",
+    body: JSON.stringify({ id }),
   });
 }

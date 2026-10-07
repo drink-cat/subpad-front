@@ -5,11 +5,13 @@ import { useAuth } from "@/components/AuthProvider";
 import { ApiError } from "@/lib/api";
 import {
   createSubpad,
+  deleteSubpad,
   listSubpads,
   statusLabel,
   subpadStatuses,
   swapLabel,
   swapTypes,
+  updateSubpad,
   type Subpad,
   type SubpadQuery,
 } from "@/lib/subpad";
@@ -22,12 +24,41 @@ const emptyForm = {
   description: "",
 };
 
-function PadActions({ id }: { id?: number }) {
+function PadActions({
+  id,
+  locked,
+  onEdit,
+  onDelete,
+}: {
+  id?: number;
+  locked: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
+}) {
+  const createTokenHref = id === undefined ? "/subpad/createToken" : `/subpad/createToken/${id}`;
   return (
     <div className="row-actions">
-      <a href={id === undefined ? "/subpad/issue" : `/subpad/issue/${id}`}>发币</a>
+      {locked ? (
+        <button type="button" disabled>
+          发币
+        </button>
+      ) : (
+        <a href={createTokenHref} target="_blank" rel="noopener noreferrer">
+          发币
+        </a>
+      )}
       <button type="button">交易</button>
       <button type="button">费用</button>
+      {id === undefined ? null : (
+        <>
+          <button type="button" disabled={locked} onClick={onEdit}>
+            修改
+          </button>
+          <button type="button" disabled={locked} onClick={onDelete}>
+            删除
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -43,10 +74,13 @@ export function SubpadPanel() {
   const { user, signOut } = useAuth();
   const [rows, setRows] = useState<Subpad[]>([]);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Subpad | null>(null);
+  const [removing, setRemoving] = useState<Subpad | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [filter, setFilter] = useState(emptyFilter);
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [pending, setPending] = useState(false);
   const [searching, setSearching] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -101,9 +135,31 @@ export function SubpadPanel() {
   }
 
   function openCreate() {
+    if (!user) return;
+    setEditing(null);
     setForm(emptyForm);
     setFormError("");
     setOpen(true);
+  }
+
+  function openEdit(item: Subpad) {
+    if (!user) return;
+    setEditing(item);
+    setForm({
+      brand: item.brand,
+      nameFull: item.nameFull,
+      status: String(item.status),
+      swapType: item.swapType,
+      description: item.description,
+    });
+    setFormError("");
+    setOpen(true);
+  }
+
+  function openDelete(item: Subpad) {
+    if (!user) return;
+    setDeleteError("");
+    setRemoving(item);
   }
 
   async function onSubmit(event: React.FormEvent) {
@@ -121,20 +177,44 @@ export function SubpadPanel() {
     }
     setPending(true);
     setFormError("");
+    const fields = {
+      brand,
+      nameFull: name,
+      status: Number(form.status),
+      swapType: form.swapType,
+      description: form.description.trim(),
+    };
     try {
-      const created = await createSubpad({
-        userId: user.id,
-        brand,
-        nameFull: name,
-        status: Number(form.status),
-        swapType: form.swapType,
-        description: form.description.trim(),
-      });
-      setRows((current) => [created, ...current.filter((item) => item.id !== created.id)]);
+      const saved = editing
+        ? await updateSubpad({
+            id: editing.id,
+            userId: editing.userId,
+            feeAddr: editing.feeAddr,
+            ...fields,
+          })
+        : await createSubpad({ userId: user.id, ...fields });
+      setRows((current) => [saved, ...current.filter((item) => item.id !== saved.id)]);
       setOpen(false);
+      setEditing(null);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) signOut();
       setFormError(err instanceof Error ? err.message : "请求失败");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function onDelete() {
+    if (!user || !removing) return;
+    setPending(true);
+    setDeleteError("");
+    try {
+      await deleteSubpad(removing.id);
+      setRows((current) => current.filter((item) => item.id !== removing.id));
+      setRemoving(null);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) signOut();
+      setDeleteError(err instanceof Error ? err.message : "请求失败");
     } finally {
       setPending(false);
     }
@@ -150,7 +230,7 @@ export function SubpadPanel() {
       </div>
       <section className="default-pad" data-testid="default-pad">
         <strong>默认 pad</strong>
-        <PadActions />
+        <PadActions locked={!user} />
       </section>
       <form className="filter-bar" onSubmit={onSearch}>
         <label className="field">
@@ -219,7 +299,12 @@ export function SubpadPanel() {
                   <td>{swapLabel(item.swapType)}</td>
                   <td>{statusLabel(item.status)}</td>
                   <td>
-                    <PadActions id={item.id} />
+                    <PadActions
+                      id={item.id}
+                      locked={!user}
+                      onEdit={() => openEdit(item)}
+                      onDelete={() => openDelete(item)}
+                    />
                   </td>
                 </tr>
               ))}
@@ -236,7 +321,7 @@ export function SubpadPanel() {
             aria-labelledby="create-subpad-title"
             onClick={(event) => event.stopPropagation()}
           >
-            <h2 id="create-subpad-title">新建 subpad</h2>
+            <h2 id="create-subpad-title">{editing ? "修改 subpad" : "新建 subpad"}</h2>
             <form onSubmit={onSubmit}>
               <label className="field">
                 品牌
@@ -290,11 +375,34 @@ export function SubpadPanel() {
                 <button className="text-button" type="button" onClick={() => setOpen(false)}>
                   取消
                 </button>
-                <button className="primary-button" type="submit" disabled={pending}>
+                <button className="primary-button" type="submit" disabled={!user || pending}>
                   提交
                 </button>
               </div>
             </form>
+          </section>
+        </div>
+      ) : null}
+      {removing ? (
+        <div className="modal-backdrop" onClick={() => setRemoving(null)}>
+          <section
+            className="panel-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-subpad-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="delete-subpad-title">删除 subpad</h2>
+            <p className="page-hint">确认删除 {removing.brand}？</p>
+            {deleteError ? <p className="form-error">{deleteError}</p> : null}
+            <div className="dialog-actions">
+              <button className="text-button" type="button" onClick={() => setRemoving(null)}>
+                取消
+              </button>
+              <button className="primary-button" type="button" onClick={() => void onDelete()} disabled={!user || pending}>
+                删除
+              </button>
+            </div>
           </section>
         </div>
       ) : null}

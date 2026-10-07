@@ -1,5 +1,5 @@
 import { IssuePanel } from "@/components/IssuePanel";
 
-export default function IssuePage() {
+export default function CreateTokenPage() {
   return <IssuePanel />;
 }
