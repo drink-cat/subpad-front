@@ -534,7 +534,8 @@ input {
 }
 
 .fee-table,
-.subpad-table {
+.subpad-table,
+.token-table {
   width: 100%;
   border-collapse: collapse;
 }
@@ -542,7 +543,9 @@ input {
 .fee-table th,
 .fee-table td,
 .subpad-table th,
-.subpad-table td {
+.subpad-table td,
+.token-table th,
+.token-table td {
   padding: 10px 8px;
   border-bottom: 1px solid var(--line);
   text-align: left;
@@ -551,18 +554,23 @@ input {
 }
 
 .subpad-table th,
-.subpad-table td {
+.subpad-table td,
+.token-table th,
+.token-table td {
   vertical-align: middle;
 }
 
 .fee-table th,
-.subpad-table th {
+.subpad-table th,
+.token-table th {
   color: var(--muted);
   font-weight: 650;
 }
 
 .subpad-table th:last-child,
-.subpad-table td:last-child {
+.subpad-table td:last-child,
+.token-table th:last-child,
+.token-table td:last-child {
   text-align: right;
 }
 
@@ -633,6 +641,20 @@ input {
 .text-link {
   color: var(--ink);
   text-decoration: none;
+}
+
+.swap-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+
+.swap-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .fee-table .mono {

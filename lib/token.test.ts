@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { setAuthToken } from "./api";
-import { createToken } from "./token";
+import { createToken, listTokens } from "./token";
 
 function json(body: unknown, status = 200) {
   return { ok: status < 400, status, json: async () => body };
@@ -41,6 +41,21 @@ test("本机发币使用 localUsdc", async () => {
   vi.stubGlobal("fetch", fetchMock);
 
   await createToken({ tokenName: "Foods", tokenSymbol: "FOOD" });
+});
+
+test("按条件查询 token 列表", async () => {
+  setAuthToken("token");
+  const fetchMock = vi.fn(async (url: string) => {
+    const target = new URL(String(url), "http://local");
+    expect(target.pathname).toBe("/backend/api/token_info/list");
+    expect(target.searchParams.get("tokenSymbol")).toBe("FOOD");
+    expect(target.searchParams.get("userId")).toBe("3");
+    expect(target.searchParams.get("limit")).toBe("200");
+    return json({ code: 0, message: "ok", data: null });
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  await expect(listTokens({ tokenSymbol: "FOOD", userId: 3 })).resolves.toEqual([]);
 });
 
 test("测试网发币使用 sepoliaUsdc", async () => {

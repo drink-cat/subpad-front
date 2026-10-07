@@ -22,6 +22,13 @@ export function SiteHeader() {
         >
           subpad管理
         </a>
+        <a
+          className="site-tab"
+          href="/token"
+          aria-current={path === "/token" || path?.startsWith("/token/") ? "page" : undefined}
+        >
+          token页
+        </a>
         <a className="site-tab" href="/fee" aria-current={path === "/fee" || path?.startsWith("/fee/") ? "page" : undefined}>
           fee管理
         </a>
