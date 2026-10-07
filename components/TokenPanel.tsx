@@ -15,6 +15,26 @@ const emptyForm = {
   mine: false,
 };
 
+function TokenDetail({ item }: { item: Token }) {
+  const quote = [item.quoteTokenSymbol, item.quoteTokenAddr].filter(Boolean).join(" ");
+  const lines = [
+    ["合约", item.tokenAddr || "—"],
+    ["计价币", quote || "—"],
+    ["Pool", item.poolId || "—"],
+    ["创建者", item.creator || "—"],
+  ];
+  return (
+    <dl className="token-detail">
+      {lines.map(([label, value]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 function toQuery(form: typeof emptyForm, userId: number): TokenQuery | string {
   const chainId = form.chainId.trim();
   const subpadId = form.subpadId.trim();
@@ -132,11 +152,9 @@ export function TokenPanel() {
               <tr>
                 <th>名称</th>
                 <th>符号</th>
-                <th>合约</th>
-                <th>计价币</th>
-                <th>Pool</th>
+                <th>信息</th>
+                <th>userId</th>
                 <th>padId</th>
-                <th>创建者</th>
                 <th>网络</th>
                 <th>发行量</th>
                 <th>操作</th>
@@ -147,19 +165,16 @@ export function TokenPanel() {
                 <tr key={item.id}>
                   <td>{item.tokenName}</td>
                   <td>{item.tokenSymbol}</td>
-                  <td className="mono">{item.tokenAddr}</td>
                   <td>
-                    {item.quoteTokenSymbol || "—"}
-                    {item.quoteTokenAddr ? <span className="fee-token">{item.quoteTokenAddr}</span> : null}
+                    <TokenDetail item={item} />
                   </td>
-                  <td className="mono">{item.poolId}</td>
+                  <td>{item.userId}</td>
                   <td>{item.subpadId ?? "—"}</td>
-                  <td className="mono">{item.creator}</td>
                   <td>{item.chainId}</td>
                   <td>{item.launchSupply}</td>
                   <td>
                     <div className="row-actions">
-                      <a href={`/swap/${item.id}`} target="_blank" rel="noopener noreferrer">
+                      <a className="primary-button" href={`/swap/${item.id}`} target="_blank" rel="noopener noreferrer">
                         交易
                       </a>
                     </div>

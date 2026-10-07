@@ -181,6 +181,7 @@ test("没有 X-Subpad-Info 时按默认 pad 发币，padId 为 0", async () => {
 
   expect(await screen.findByText("已提交")).toBeInTheDocument();
   expect(api.createToken).toHaveBeenCalledWith({
+    subpadId: 0,
     tokenName: "Foods",
     tokenSymbol: "FOOD",
     chainId: 31337,

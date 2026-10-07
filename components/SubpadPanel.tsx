@@ -25,8 +25,8 @@ const emptyForm = {
 };
 
 function createTokenHref(brand?: string) {
-  if (!brand) return "/subpad/createToken";
-  return `http://${brand}.launch.o1.local/subpad/createToken`;
+  const host = brand ? `${brand}.launch.o1.local` : "launch.o1.local";
+  return `http://${host}/subpad/createToken`;
 }
 
 function PadActions({

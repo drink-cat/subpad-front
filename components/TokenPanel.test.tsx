@@ -58,6 +58,16 @@ test("登录后展示列表，并按条件查询", async () => {
   const trade = within(screen.getByRole("row", { name: /Foods/ })).getByRole("link", { name: "交易" });
   expect(trade).toHaveAttribute("href", "/swap/1");
   expect(trade).toHaveAttribute("target", "_blank");
+  expect(trade).toHaveClass("primary-button");
+  const detail = within(screen.getByRole("row", { name: /Foods/ })).getByRole("cell", { name: /合约/ });
+  expect(detail).toHaveTextContent("0xtoken");
+  expect(detail).toHaveTextContent("USDC");
+  expect(detail).toHaveTextContent("pool-1");
+  expect(detail).toHaveTextContent("0xcreator");
+  const headers = screen.getAllByRole("columnheader").map((item) => item.textContent);
+  expect(headers[headers.indexOf("padId") - 1]).toBe("userId");
+  const cells = within(screen.getByRole("row", { name: /Foods/ })).getAllByRole("cell");
+  expect(cells[headers.indexOf("userId")]).toHaveTextContent("3");
   expect(screen.getByRole("cell", { name: "—" })).toBeInTheDocument();
   expect(api.listTokens).toHaveBeenCalledWith({});
 

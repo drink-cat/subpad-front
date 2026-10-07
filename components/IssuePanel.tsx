@@ -111,14 +111,14 @@ export function IssuePanel() {
         tokenName: name,
         tokenSymbol: symbol,
         quoteToken,
-        subpadId: pad.id === 0 ? undefined : pad.id,
+        subpadId: pad.id,
         subpadFeeTo: pad.feeAddr,
       });
       const launch = launchAddress(config, activeChainId);
       const owner = await publicClient.readContract({ address: launch, abi: createTokenAbi, functionName: "owner" });
       if (getAddress(owner) !== getAddress(connected)) throw new Error("当前钱包不是发币合约 owner");
       await createToken({
-        ...(pad.id === 0 ? {} : { subpadId: pad.id }),
+        subpadId: pad.id,
         tokenName: name,
         tokenSymbol: symbol,
         chainId: activeChainId,

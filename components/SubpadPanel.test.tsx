@@ -100,7 +100,7 @@ test("展示当前用户的 subpad，并可以新建", async () => {
   expect(within(row).queryByRole("button", { name: "费用" })).not.toBeInTheDocument();
   expect(screen.getByTestId("default-pad")).not.toHaveTextContent("padId");
   const defaultIssue = within(screen.getByTestId("default-pad")).getByRole("link", { name: "发币" });
-  expect(defaultIssue).toHaveAttribute("href", "/subpad/createToken");
+  expect(defaultIssue).toHaveAttribute("href", "http://launch.o1.local/subpad/createToken");
   expect(defaultIssue).toHaveAttribute("target", "_blank");
   expect(defaultIssue).toHaveClass("primary-button");
   expect(api.listSubpads).toHaveBeenCalledWith({});
