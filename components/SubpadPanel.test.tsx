@@ -41,7 +41,9 @@ test("未登录时提示先登录", () => {
   expect(screen.getByTestId("default-pad")).toHaveTextContent("默认 pad");
   expect(screen.getByTestId("default-pad")).not.toHaveTextContent("padId");
   expect(screen.getByRole("button", { name: "新建 subpad" })).toBeDisabled();
-  expect(within(screen.getByTestId("default-pad")).getByRole("button", { name: "发币" })).toBeDisabled();
+  const lockedIssue = within(screen.getByTestId("default-pad")).getByRole("button", { name: "发币" });
+  expect(lockedIssue).toBeDisabled();
+  expect(lockedIssue).toHaveClass("primary-button");
   expect(screen.getByRole("button", { name: "查询" })).toBeDisabled();
   expect(api.listSubpads).not.toHaveBeenCalled();
   expect(api.createSubpad).not.toHaveBeenCalled();
@@ -88,16 +90,19 @@ test("展示当前用户的 subpad，并可以新建", async () => {
   expect(headers.at(-1)).toBe("操作");
   const row = screen.getByRole("row", { name: /Foods Pad/ });
   expect(within(row).getAllByRole("cell")[0]).toHaveTextContent("foods");
-  expect(within(row).getByRole("link", { name: "发币" })).toHaveAttribute("href", "/subpad/createToken/1");
-  expect(within(row).getByRole("link", { name: "发币" })).toHaveAttribute("target", "_blank");
+  const issue = within(row).getByRole("link", { name: "发币" });
+  expect(issue).toHaveAttribute("href", "/subpad/createToken/1");
+  expect(issue).toHaveAttribute("target", "_blank");
+  expect(issue).toHaveClass("primary-button");
   expect(within(row).getByRole("button", { name: "修改" })).toBeEnabled();
   expect(within(row).getByRole("button", { name: "删除" })).toBeEnabled();
-  expect(within(row).getByRole("button", { name: "交易" })).toBeInTheDocument();
-  expect(within(row).getByRole("button", { name: "费用" })).toBeInTheDocument();
+  expect(within(row).queryByRole("button", { name: "交易" })).not.toBeInTheDocument();
+  expect(within(row).queryByRole("button", { name: "费用" })).not.toBeInTheDocument();
   expect(screen.getByTestId("default-pad")).not.toHaveTextContent("padId");
   const defaultIssue = within(screen.getByTestId("default-pad")).getByRole("link", { name: "发币" });
   expect(defaultIssue).toHaveAttribute("href", "/subpad/createToken");
   expect(defaultIssue).toHaveAttribute("target", "_blank");
+  expect(defaultIssue).toHaveClass("primary-button");
   expect(api.listSubpads).toHaveBeenCalledWith({});
 
   fireEvent.click(screen.getByRole("checkbox", { name: "看我的subpad" }));

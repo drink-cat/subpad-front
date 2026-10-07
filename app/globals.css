@@ -368,11 +368,17 @@ input {
 }
 
 .primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 40px;
   padding: 0 16px;
   border-radius: 999px;
   background: var(--ink);
   color: #f7f4ee;
+  font: inherit;
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .primary-button:disabled {
@@ -576,12 +582,13 @@ input {
 
 .row-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 12px;
 }
 
-.row-actions a,
-.row-actions button {
+.row-actions a:not(.primary-button),
+.row-actions button:not(.primary-button) {
   padding: 0;
   border: 0;
   background: transparent;
@@ -592,7 +599,7 @@ input {
   cursor: pointer;
 }
 
-.row-actions button:disabled {
+.row-actions button:not(.primary-button):disabled {
   color: #b7b1a8;
   cursor: not-allowed;
 }

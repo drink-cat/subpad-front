@@ -1,3 +1,4 @@
+import { isAddress, zeroAddress, type Address } from "viem";
 import { request } from "@/lib/api";
 import { getPublicConfig, type PublicConfig } from "@/lib/config";
 import { getChainEnv } from "@/lib/env";
@@ -32,7 +33,72 @@ export type TokenInput = {
   subpadId?: number;
   tokenName: string;
   tokenSymbol: string;
+  chainId?: number;
 };
+
+/** 与 LaunchCore 测试一致。Token 合约固定 18 位，tokenDecimals 只是预留字段。 */
+export const tokenDecimals = 18n;
+export const launchSupply = 1_000_000n * 10n ** 18n;
+export const initPrice = 10n ** 18n;
+
+export const createTokenAbi = [
+  {
+    type: "function",
+    name: "createToken",
+    stateMutability: "nonpayable",
+    inputs: [
+      {
+        name: "params",
+        type: "tuple",
+        components: [
+          { name: "useMockSwap", type: "bool" },
+          { name: "tokenName", type: "string" },
+          { name: "tokenSymbol", type: "string" },
+          { name: "tokenDecimals", type: "uint256" },
+          { name: "totalSupply", type: "uint256" },
+          { name: "quoteToken", type: "address" },
+          { name: "initPrice", type: "uint256" },
+          { name: "subpadId", type: "uint256" },
+          { name: "subpadFeeTo", type: "address" },
+        ],
+      },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "owner",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+] as const;
+
+export function createTokenParams(input: {
+  useMockSwap: boolean;
+  tokenName: string;
+  tokenSymbol: string;
+  quoteToken: string;
+  subpadId?: number;
+  subpadFeeTo?: string;
+}) {
+  const quoteToken = input.quoteToken.trim();
+  if (!isAddress(quoteToken)) throw new Error("报价币地址无效");
+  const subpadId = input.subpadId ?? 0;
+  const feeTo = subpadId === 0 ? zeroAddress : (input.subpadFeeTo ?? "").trim();
+  if (!isAddress(feeTo)) throw new Error("子 pad 费用地址无效");
+  return {
+    useMockSwap: input.useMockSwap,
+    tokenName: input.tokenName,
+    tokenSymbol: input.tokenSymbol,
+    tokenDecimals,
+    totalSupply: launchSupply,
+    quoteToken,
+    initPrice,
+    subpadId: BigInt(subpadId),
+    subpadFeeTo: feeTo as Address,
+  };
+}
 
 export function selectedQuoteToken(config: PublicConfig) {
   const local = getChainEnv() === "local";

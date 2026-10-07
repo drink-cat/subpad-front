@@ -39,16 +39,14 @@ function PadActions({
   return (
     <div className="row-actions">
       {locked ? (
-        <button type="button" disabled>
+        <button className="primary-button" type="button" disabled>
           发币
         </button>
       ) : (
-        <a href={createTokenHref} target="_blank" rel="noopener noreferrer">
+        <a className="primary-button" href={createTokenHref} target="_blank" rel="noopener noreferrer">
           发币
         </a>
       )}
-      <button type="button">交易</button>
-      <button type="button">费用</button>
       {id === undefined ? null : (
         <>
           <button type="button" disabled={locked} onClick={onEdit}>

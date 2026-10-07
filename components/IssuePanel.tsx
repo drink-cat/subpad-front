@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { getAddress } from "viem";
+import { useConnection, usePublicClient, useWriteContract } from "wagmi";
 import { useAuth } from "@/components/AuthProvider";
 import { ApiError } from "@/lib/api";
 import { brandFromHost } from "@/lib/brand";
-import { getPublicConfig } from "@/lib/config";
+import { getPublicConfig, type PublicConfig } from "@/lib/config";
+import { defaultE2E, isLocalEnv } from "@/lib/e2e";
+import { launchAddress } from "@/lib/swap";
 import { getSubpad, listSubpads, statusLabel, swapLabel, type Subpad } from "@/lib/subpad";
-import { createToken, selectedQuoteToken } from "@/lib/token";
+import { createToken, createTokenAbi, createTokenParams, selectedQuoteToken } from "@/lib/token";
 
 function parsePadId(value: string | undefined) {
   if (value === undefined) return null;
@@ -40,23 +44,33 @@ function SubpadSummary({ pad, showId }: { pad: Subpad; showId: boolean }) {
 export function IssuePanel({ subpadId }: { subpadId?: string }) {
   const padId = parsePadId(subpadId);
   const { user, signOut } = useAuth();
+  const { address, chainId } = useConnection();
+  const publicClient = usePublicClient();
+  const { writeContractAsync } = useWriteContract();
   const [pad, setPad] = useState<Subpad | null>(null);
   const [infoError, setInfoError] = useState("");
   const [infoLoaded, setInfoLoaded] = useState(false);
   const [tokenName, setTokenName] = useState("");
   const [tokenSymbol, setTokenSymbol] = useState("");
+  const [config, setConfig] = useState<PublicConfig | null>(null);
   const [quote, setQuote] = useState("");
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
+  const connected = useSyncExternalStore(
+    () => () => {},
+    () => address,
+    () => undefined,
+  );
 
   useEffect(() => {
     if (padId === "invalid") return;
     let cancelled = false;
     getPublicConfig()
-      .then((config) => {
+      .then((nextConfig) => {
         if (cancelled) return;
-        const next = selectedQuoteToken(config);
+        setConfig(nextConfig);
+        const next = selectedQuoteToken(nextConfig);
         setQuote(`${next.name} ${next.addr}`);
       })
       .catch((err: unknown) => {
@@ -95,9 +109,15 @@ export function IssuePanel({ subpadId }: { subpadId?: string }) {
     };
   }, [user, padId, signOut]);
 
+  const activeChainId = chainId ?? publicClient?.chain?.id ?? (isLocalEnv() ? defaultE2E().chainId : undefined);
+
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (!user || padId === "invalid") return;
+    if (!user || !connected || !pad || !config || !publicClient || padId === "invalid") return;
+    if (!activeChainId) {
+      setError("未识别当前网络");
+      return;
+    }
     const name = tokenName.trim();
     const symbol = tokenSymbol.trim();
     if (!name || !symbol) {
@@ -109,11 +129,31 @@ export function IssuePanel({ subpadId }: { subpadId?: string }) {
     setError("");
     setDone(false);
     try {
+      const quoteToken = selectedQuoteToken(config).addr;
+      const params = createTokenParams({
+        useMockSwap: pad.swapType === "mockSwap",
+        tokenName: name,
+        tokenSymbol: symbol,
+        quoteToken,
+        subpadId: padId === null ? undefined : padId,
+        subpadFeeTo: pad.feeAddr,
+      });
+      const launch = launchAddress(config, activeChainId);
+      const owner = await publicClient.readContract({ address: launch, abi: createTokenAbi, functionName: "owner" });
+      if (getAddress(owner) !== getAddress(connected)) throw new Error("当前钱包不是发币合约 owner");
       await createToken({
         ...(padId === null ? {} : { subpadId: padId }),
         tokenName: name,
         tokenSymbol: symbol,
+        chainId: activeChainId,
       });
+      const hash = await writeContractAsync({
+        address: launch,
+        abi: createTokenAbi,
+        functionName: "createToken",
+        args: [params],
+      });
+      await publicClient.waitForTransactionReceipt({ hash });
       setDone(true);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) signOut();
@@ -155,9 +195,10 @@ export function IssuePanel({ subpadId }: { subpadId?: string }) {
           <label htmlFor="quote-token">quoteToken</label>
           <input id="quote-token" readOnly value={quote} />
         </div>
+        {!connected ? <p className="page-hint">请先连接钱包。</p> : null}
         {error ? <p className="form-error">{error}</p> : null}
         {done ? <p className="form-done">已提交</p> : null}
-        <button className="primary-button" type="submit" disabled={!user || pending}>
+        <button className="primary-button" type="submit" disabled={!user || !connected || !pad || pending}>
           提交
         </button>
       </form>

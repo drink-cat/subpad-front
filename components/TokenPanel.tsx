@@ -83,7 +83,7 @@ export function TokenPanel() {
   return (
     <main className="page page-wide">
       <div className="page-bar">
-        <h1>token页</h1>
+        <h1>token管理</h1>
       </div>
       <form className="filter-bar" onSubmit={onSubmit}>
         <label className="field">

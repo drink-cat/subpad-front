@@ -1,6 +1,7 @@
+import { zeroAddress } from "viem";
 import { afterEach, expect, test, vi } from "vitest";
 import { setAuthToken } from "./api";
-import { createToken, listTokens } from "./token";
+import { createToken, createTokenParams, initPrice, launchSupply, listTokens, tokenDecimals } from "./token";
 
 function json(body: unknown, status = 200) {
   return { ok: status < 400, status, json: async () => body };
@@ -19,6 +20,47 @@ afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   setAuthToken(null);
+});
+
+test("发币参数对齐 createToken", () => {
+  expect(
+    createTokenParams({
+      useMockSwap: true,
+      tokenName: "Foods",
+      tokenSymbol: "FOOD",
+      quoteToken: "0x2222222222222222222222222222222222222222",
+      subpadId: 7,
+      subpadFeeTo: "0x1111111111111111111111111111111111111111",
+    }),
+  ).toEqual({
+    useMockSwap: true,
+    tokenName: "Foods",
+    tokenSymbol: "FOOD",
+    tokenDecimals,
+    totalSupply: launchSupply,
+    quoteToken: "0x2222222222222222222222222222222222222222",
+    initPrice,
+    subpadId: 7n,
+    subpadFeeTo: "0x1111111111111111111111111111111111111111",
+  });
+  expect(
+    createTokenParams({
+      useMockSwap: false,
+      tokenName: "Foods",
+      tokenSymbol: "FOOD",
+      quoteToken: "0x2222222222222222222222222222222222222222",
+    }).subpadFeeTo,
+  ).toBe(zeroAddress);
+  expect(() =>
+    createTokenParams({
+      useMockSwap: true,
+      tokenName: "Foods",
+      tokenSymbol: "FOOD",
+      quoteToken: "0x2222222222222222222222222222222222222222",
+      subpadId: 7,
+      subpadFeeTo: "0xfee",
+    }),
+  ).toThrow("子 pad 费用地址无效");
 });
 
 test("本机发币使用 localUsdc", async () => {

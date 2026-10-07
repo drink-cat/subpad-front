@@ -1,5 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { zeroAddress } from "viem";
 import { beforeEach, expect, test, vi } from "vitest";
+import { initPrice, launchSupply, tokenDecimals } from "@/lib/token";
 import { AuthProvider } from "./AuthProvider";
 import { IssuePanel } from "./IssuePanel";
 
@@ -8,6 +10,11 @@ const api = vi.hoisted(() => ({
   getSubpad: vi.fn(),
   listSubpads: vi.fn(),
   getPublicConfig: vi.fn(),
+  write: vi.fn(),
+  read: vi.fn(),
+  wait: vi.fn(),
+  address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266" as string | undefined,
+  chainId: 31337 as number | undefined,
 }));
 
 vi.mock("@/lib/token", async () => {
@@ -24,11 +31,21 @@ vi.mock("@/lib/subpad", async () => {
   return { ...actual, getSubpad: api.getSubpad, listSubpads: api.listSubpads };
 });
 
+vi.mock("wagmi", () => ({
+  useConnection: () => ({ address: api.address, chainId: api.chainId }),
+  usePublicClient: () => ({ readContract: api.read, waitForTransactionReceipt: api.wait }),
+  useWriteContract: () => ({ writeContractAsync: api.write }),
+}));
+
 const user = { id: 3, username: "alice", fee_addr: "", token: "token" };
+const quote = "0x2222222222222222222222222222222222222222";
+const fee = "0x1111111111111111111111111111111111111111";
+const launch = "0x3333333333333333333333333333333333333333";
+const owner = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
 const foods = {
   id: 1,
   userId: 3,
-  feeAddr: "0xfee",
+  feeAddr: fee,
   brand: "foods",
   nameFull: "Foods Pad",
   status: 1,
@@ -39,16 +56,25 @@ const foods = {
 };
 
 beforeEach(() => {
+  api.address = owner;
+  api.chainId = 31337;
   api.createToken.mockReset();
   api.getSubpad.mockReset();
   api.listSubpads.mockReset();
+  api.getPublicConfig.mockReset();
+  api.write.mockReset();
+  api.read.mockReset();
+  api.wait.mockReset();
   api.createToken.mockResolvedValue({});
   api.getSubpad.mockResolvedValue(foods);
   api.listSubpads.mockResolvedValue([foods]);
   api.getPublicConfig.mockResolvedValue({
-    quoteToken: { localUsdc: "0xlocal", sepoliaUsdc: "0xsep" },
-    syncLog: [],
+    quoteToken: { localUsdc: quote, sepoliaUsdc: "0x4444444444444444444444444444444444444444" },
+    syncLog: [{ name: "本地网", chainId: 31337, rpcUrl: "http://127.0.0.1:8545", launchContract: launch }],
   });
+  api.write.mockResolvedValue("0xhash");
+  api.wait.mockResolvedValue({});
+  api.read.mockResolvedValue(owner);
 });
 
 test("未登录不能发币", async () => {
@@ -59,7 +85,7 @@ test("未登录不能发币", async () => {
   );
   expect(screen.getByRole("heading", { name: "subpad 信息" })).toBeInTheDocument();
   expect(screen.getByText("请先登录后再发币。")).toBeInTheDocument();
-  expect(await screen.findByLabelText("quoteToken")).toHaveValue("localUsdc 0xlocal");
+  expect(await screen.findByLabelText("quoteToken")).toHaveValue(`localUsdc ${quote}`);
   expect(screen.getByLabelText("quoteToken")).toHaveAttribute("readonly");
   expect(screen.getByRole("button", { name: "提交" })).toBeDisabled();
   expect(api.createToken).not.toHaveBeenCalled();
@@ -92,7 +118,28 @@ test("页面上方展示 subpad 信息，并提交 tokenName 和 tokenSymbol", a
     subpadId: 7,
     tokenName: "Foods",
     tokenSymbol: "FOOD",
+    chainId: 31337,
   });
+  expect(api.write).toHaveBeenCalledWith(
+    expect.objectContaining({
+      address: launch,
+      functionName: "createToken",
+      args: [
+        {
+          useMockSwap: true,
+          tokenName: "Foods",
+          tokenSymbol: "FOOD",
+          tokenDecimals,
+          totalSupply: launchSupply,
+          quoteToken: quote,
+          initPrice,
+          subpadId: 7n,
+          subpadFeeTo: fee,
+        },
+      ],
+    }),
+  );
+  expect(api.createToken.mock.invocationCallOrder[0]).toBeLessThan(api.write.mock.invocationCallOrder[0]);
 });
 
 test("默认 pad 按域名展示 subpad，发币不带 padId", async () => {
@@ -120,6 +167,12 @@ test("默认 pad 按域名展示 subpad，发币不带 padId", async () => {
     expect(api.createToken).toHaveBeenCalledWith({
       tokenName: "Foods",
       tokenSymbol: "FOOD",
+      chainId: 31337,
+    });
+    expect(api.write.mock.calls[0][0].args[0]).toMatchObject({
+      subpadId: 0n,
+      subpadFeeTo: zeroAddress,
+      useMockSwap: true,
     });
   } finally {
     vi.restoreAllMocks();
